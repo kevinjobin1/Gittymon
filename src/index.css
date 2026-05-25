@@ -1,0 +1,243 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&family=JetBrains+Mono:wght@400;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Space Mono", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-caps: "Courier Prime", monospace;
+}
+
+html, body {
+  background-color: #cbd5e1; /* Base gray background */
+  background-image: radial-gradient(#94a3b8 1px, transparent 1px);
+  background-size: 12px 12px;
+  overflow-x: hidden;
+  /* Pixelated cyan retro arrow pointer cursor */
+  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32' style='image-rendering:pixelated;'><path d='M2,2 L18,18 L12,18 L16,26 L12,28 L8,20 L2,26 Z' fill='%2338bdf8' stroke='%23000000' stroke-width='2.5' stroke-linejoin='round'/></svg>") 2 2, auto;
+}
+
+/* Hand glove pointer on all interactive triggers */
+button, select, input, [role="button"], a, .cursor-pointer, .pixel-trigger {
+  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32' style='image-rendering:pixelated;'><path d='M10,2 L14,2 L14,10 L18,10 L18,8 L22,8 L22,10 L26,10 L26,12 L30,12 L30,18 L26,24 L16,24 L10,18 Z' fill='%23fb7185' stroke='%23000000' stroke-width='2.5' stroke-linejoin='round'/></svg>") 12 2, pointer !important;
+}
+
+/* Console Shell Texture */
+.console-shell {
+  background-color: #d1d5db; /* Classic grey */
+  border-radius: 12px 12px 48px 12px;
+  box-shadow: 
+      inset -6px -6px 18px rgba(0,0,0,0.12),
+      inset 6px 6px 18px rgba(255,255,255,0.85),
+      12px 12px 24px rgba(0,0,0,0.25);
+  border: 3px solid #9ca3af;
+}
+
+/* Screen Lens/Bezel */
+.screen-lens {
+  background-color: #374151; /* Dark grey bezel */
+  border-radius: 12px 12px 32px 12px;
+  box-shadow: inset 3px 3px 6px rgba(0,0,0,0.45), 0 2px 4px rgba(0,0,0,0.2);
+  border: 3px solid #1f2937;
+}
+
+/* The actual retro screen */
+.game-screen {
+  background-color: #f3f3f3; /* off-white or soft warm grey */
+  box-shadow: inset 3px 3px 6px rgba(0,0,0,0.25);
+  background-image: repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0.02) 0px,
+      rgba(0,0,0,0.02) 1px,
+      transparent 1px,
+      transparent 2px
+  );
+}
+
+/* Hardware buttons */
+.d-pad {
+  background-color: #1f2937;
+  box-shadow: 
+    inset 1px 1px 2px rgba(255,255,255,0.2), 
+    inset -1px -1px 2px rgba(0,0,0,0.5), 
+    3px 3px 6px rgba(0,0,0,0.4);
+}
+
+.d-pad-vertical, .d-pad-horizontal {
+  background-color: #1f2937;
+}
+
+.action-button {
+  background: radial-gradient(circle at 30% 30%, #b42b4b, #7f001c);
+  box-shadow: 
+      inset 1.5px 1.5px 3px rgba(255,255,255,0.35),
+      inset -1.5px -1.5px 3px rgba(0,0,0,0.45),
+      3px 3px 5px rgba(0,0,0,0.5);
+  border: 1.5px solid #4a041c;
+  transition: transform 0.05s ease, box-shadow 0.05s ease;
+}
+
+.action-button:active, .action-button.pressed {
+  box-shadow: 
+      inset 2px 2px 4px rgba(0,0,0,0.6),
+      0px 0px 0px rgba(0,0,0,0);
+  transform: translate(1.5px, 1.5px);
+}
+
+.pill-button {
+  background-color: #4b5563;
+  box-shadow: 
+      inset 1px 1px 2px rgba(255,255,255,0.2),
+      inset -1px -1px 2px rgba(0,0,0,0.45),
+      2px 2px 3px rgba(0,0,0,0.35);
+  border-radius: 12px;
+  transform: rotate(-22deg);
+  transition: transform 0.05s ease, box-shadow 0.05s ease;
+}
+
+.pill-button:active, .pill-button.pressed {
+  box-shadow: inset 2px 2px 4px rgba(0,0,0,0.6);
+  transform: rotate(-22deg) translate(1px, 1px);
+}
+
+.retro-input {
+  border-top: 2.5px solid #7f001c;
+  border-left: 2.5px solid #7f001c;
+  border-bottom: 2px solid #1a1a1a;
+  border-right: 2px solid #1a1a1a;
+  background-color: #ffffff;
+  font-family: "Space Mono", monospace;
+}
+
+.retro-input:focus {
+  outline: none;
+  border-color: #1a1a1a;
+}
+
+.retro-btn-ingame {
+  border: 2px solid #1a1a1a;
+  background-color: #7f001c;
+  color: #ffffff;
+  box-shadow: 2px 2px 0px #1a1a1a;
+  transition: transform 0.05s ease, box-shadow 0.05s ease;
+  font-family: "Courier Prime", monospace;
+}
+
+.retro-btn-ingame:active {
+  box-shadow: 0px 0px 0px #1a1a1a;
+  transform: translate(2px, 2px);
+}
+
+.dither-border-b {
+  position: relative;
+}
+.dither-border-b::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-image: linear-gradient(45deg, #1a1a1a 25%, transparent 25%, transparent 75%, #1a1a1a 75%, #1a1a1a), linear-gradient(45deg, #1a1a1a 25%, transparent 25%, transparent 75%, #1a1a1a 75%, #1a1a1a);
+  background-size: 4px 4px;
+  background-position: 0 0, 2px 2px;
+}
+
+/* Custom 8-bit text blinking prompt */
+.blink {
+  animation: blink-anim 1s step-end infinite;
+}
+
+@keyframes blink-anim {
+  from, to { border-color: transparent }
+  50% { border-color: #1a1a1a }
+}
+
+/* Game LCD Scanline simulation overlay */
+.lcd-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(0,0,0,0.06) 1px, transparent 1px);
+  background-size: 3px 3px;
+  opacity: 0.85;
+}
+
+/* Custom Retro Scrollbar inside Gameboy Screen Viewport */
+.game-screen ::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.game-screen ::-webkit-scrollbar-track {
+  background: #f5f5f5;
+  border-left: 1.5px dashed #1a1a1a;
+}
+.game-screen ::-webkit-scrollbar-thumb {
+  background: #7f001c;
+  border: 1px solid #1a1a1a;
+}
+
+/* Boot animation styles */
+@keyframes logo-slide-down {
+  0% {
+    transform: translateY(-80px);
+    opacity: 0;
+  }
+  70% {
+    transform: translateY(10px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-logo-slide-down {
+  animation: logo-slide-down 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes fade-in-delayed {
+  0%, 75% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0.85;
+  }
+}
+
+.animate-fade-in-delayed {
+  animation: fade-in-delayed 1.8s ease-out forwards;
+}
+
+/* Pixel Dust Particles */
+.pixel-dust {
+  position: absolute;
+  width: var(--size);
+  height: var(--size);
+  background-color: var(--color);
+  opacity: 0;
+  pointer-events: none;
+  animation: float-up var(--duration) linear infinite;
+  animation-delay: var(--delay);
+  image-rendering: pixelated;
+  box-shadow: 0 0 4px var(--color);
+  border-radius: 1px;
+}
+
+@keyframes float-up {
+  0% {
+    transform: translateY(105vh) translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.7;
+  }
+  90% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateY(-5vh) translateX(var(--drift)) rotate(360deg);
+    opacity: 0;
+  }
+}
+
