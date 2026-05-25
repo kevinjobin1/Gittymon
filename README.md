@@ -24,7 +24,7 @@
 ### 🎬 Live Demo
 
 <p align="center">
-  <img src="screencast.gif" alt="Gittymon App Screencast" width="100%" style="max-width: 390px; border-radius: 12px; border: 2px solid #1a1a1a;" />
+  <video src="https://github.com/user-attachments/assets/6be20de4-3669-45ac-8e85-6b4caa328a91" alt="Gittymon Video Summon Your Monster" width="100%" style="max-width: 390px; border-radius: 12px; border: 2px solid #1a1a1a;" />
   <br />
   <em>Full flow: enter a GitHub username → press SUMMON → watch your Roast-mon come to life!</em>
 </p>
