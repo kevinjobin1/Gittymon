@@ -1,4 +1,4 @@
-export interface MonStats {
+export interface Stats {
   hp: number;
   attack: number;
   defense: number;
@@ -6,7 +6,7 @@ export interface MonStats {
   chaos: number;
 }
 
-export interface MonMove {
+export interface Move {
   name: string;
   power: number;
   desc: string;
@@ -20,27 +20,24 @@ export interface RoastMon {
   level: number;
   bio: string;
   roast: string;
-  stats: MonStats;
-  moves: MonMove[];
+  stats: Stats;
+  moves: Move[];
   joinedYear: string;
   publicRepos: number;
   followers: number;
   location: string;
-  spriteSeed: string; // Used to procedurally generate a custom 8-bit visual monster
+  spriteSeed: string;
 }
 
-export type ScreenID =
-  | 'SPLASH'
-  | 'HUB'
-  | 'SUMMONING'
-  | 'DETAILS'
-  | 'BATTLE'
-  | 'PVP_LOBBY'
-  | 'PVP_BATTLE'
-  | 'AI_BOSS_BATTLE'
-  | 'LEADERBOARD'
-  | 'EXPORT_EMBED'
-  | 'HISTORY';
+export interface GithubData {
+  name: string;
+  public_repos: number;
+  followers: number;
+  location: string;
+  joinedYear: string;
+  bio: string;
+  avatar_url: string;
+}
 
 export interface LeaderboardEntry {
   username: string;
@@ -51,15 +48,46 @@ export interface LeaderboardEntry {
   avatarUrl: string;
 }
 
-export interface BattleState {
-  playerHP: number;
-  playerMaxHP: number;
-  enemyName: string;
-  enemyHP: number;
-  enemyMaxHP: number;
-  enemyLevel: number;
-  enemySpriteSeed: string;
-  logs: string[];
-  isOver: boolean;
-  result?: 'WIN' | 'LOSE' | 'RUN';
+export interface PlayerSession {
+  ws: WebSocket;
+  username: string;
+  mon: any;
+  status: 'idle' | 'searching' | 'battling';
+  roomId: string | null;
+  pNumber: number;
+}
+
+export interface RoomState {
+  roomId: string;
+  isAiMatch: boolean;
+  p1: {
+    username: string;
+    mon: any;
+    hp: number;
+    maxHp: number;
+    ws: WebSocket | null;
+    action: { action: string; moveIndex: number } | null;
+  };
+  p2: {
+    username: string;
+    mon: any;
+    hp: number;
+    maxHp: number;
+    ws: WebSocket | null;
+    action: { action: string; moveIndex: number } | null;
+  };
+  turn: number;
+}
+
+export interface SummonCacheEntry {
+  username: string;
+  resultMon: RoastMon;
+  generatedAt: string;
+}
+
+export interface Env {
+  LEADERBOARD: KVNamespace;
+  SUMMON_CACHE: KVNamespace;
+  GAME_SERVER: DurableObjectNamespace;
+  GROQ_API_KEY?: string;
 }

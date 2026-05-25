@@ -5,10 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "build": "vite build && mv dist/index.html dist/shell.html",
+    "deploy": "npm run build && npx wrangler deploy",
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "worker:dev": "npx wrangler dev"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",
@@ -26,6 +28,7 @@
     "ws": "^8.21.0"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260525.1",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "@types/ws": "^8.18.1",

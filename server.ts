@@ -15,6 +15,7 @@ const escapeHtml = (str: string): string =>
   str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = 3000;
 
 app.use(express.json());
@@ -339,6 +340,7 @@ app.get('/card/:username', (req, res) => {
   const origin = `${req.protocol}://${req.get('host')}`;
   const gifUrl = `${origin}/api/embed/${cleanUsername}.gif`;
   const cardUrl = `${origin}/card/${cleanUsername}`;
+  const socialPreviewUrl = `${origin}/social-preview.png`;
   const title = `${monName.toUpperCase()} LV ${level}`;
   const ogTitle = `@${cleanUsername}'s Gittymon — ${title}`;
 
@@ -354,10 +356,10 @@ app.get('/card/:username', (req, res) => {
   <!-- Open Graph -->
   <meta property="og:title" content="${h(ogTitle)}">
   <meta property="og:description" content="${h(roast)}">
-  <meta property="og:image" content="${gifUrl}">
-  <meta property="og:image:width" content="460">
-  <meta property="og:image:height" content="220">
-  <meta property="og:image:type" content="image/gif">
+  <meta property="og:image" content="${socialPreviewUrl}">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:type" content="image/png">
   <meta property="og:url" content="${cardUrl}">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Gittymon">
@@ -366,7 +368,7 @@ app.get('/card/:username', (req, res) => {
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${h(ogTitle)}">
   <meta name="twitter:description" content="${h(roast)}">
-  <meta name="twitter:image" content="${gifUrl}">
+  <meta name="twitter:image" content="${socialPreviewUrl}">
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -519,7 +521,7 @@ app.get('/card/:username', (req, res) => {
 </html>`;
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.setHeader('Cache-Control', 'max-age=60, s-maxage=120, stale-while-revalidate=600');
+  res.setHeader('Cache-Control', 'no-cache');
   res.send(html);
 });
 
@@ -684,6 +686,36 @@ function generateMockRoastMon(githubData: any, username: string) {
 
 // Vite static assets mount structure
 async function startServer() {
+  // Helper: inject dynamic absolute URLs into static meta tags
+  function injectAbsoluteMeta(html: string, req: express.Request): string {
+    const origin = `${req.protocol}://${req.get('host')}`;
+    return html
+      .replace(
+        '<!-- OG_URL_INJECTED_BY_SERVER -->',
+        `<meta property="og:url" content="${origin}/">`
+      )
+      .replace(
+        '<!-- OG_IMAGE_INJECTED_BY_SERVER -->',
+        `<meta property="og:image" content="${origin}/social-preview.png">`
+      )
+      .replace(
+        '<!-- TWITTER_IMAGE_INJECTED_BY_SERVER -->',
+        `<meta name="twitter:image" content="${origin}/social-preview.png">`
+      );
+  }
+
+  // Inject dynamic absolute og:url for the root page
+  app.get('/', (req, res) => {
+    const htmlPath = process.env.NODE_ENV !== 'production'
+      ? path.join(process.cwd(), 'index.html')
+      : path.join(process.cwd(), 'dist', 'index.html');
+    let html = fs.readFileSync(htmlPath, 'utf-8');
+    html = injectAbsoluteMeta(html, req);
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.send(html);
+  });
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -694,7 +726,12 @@ async function startServer() {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      const htmlPath = path.join(distPath, 'index.html');
+      let html = fs.readFileSync(htmlPath, 'utf-8');
+      html = injectAbsoluteMeta(html, req);
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.send(html);
     });
   }
 

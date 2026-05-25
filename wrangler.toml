@@ -1,0 +1,24 @@
+name = "gittymon"
+main = "src/worker.ts"
+compatibility_date = "2025-04-01"
+account_id = "922e6dfde82a28128fb4e62ea584caa2"
+compatibility_flags = ["nodejs_compat"]
+
+# KV namespaces
+kv_namespaces = [
+  { binding = "LEADERBOARD", id = "ac8c8fc7a67848dfa272a3eee326d2e6" },
+  { binding = "SUMMON_CACHE", id = "42733f45f6224dab8e7cfa6640aae393" }
+]
+
+# Durable Object for WebSocket multiplayer
+durable_objects = { bindings = [
+  { name = "GAME_SERVER", class_name = "GameServer" }
+] }
+
+# Migrations
+migrations = [
+  { tag = "v1", new_sqlite_classes = ["GameServer"] }
+]
+
+[observability]
+enabled = true

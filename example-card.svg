@@ -1,0 +1,547 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="460" height="220" viewBox="0 0 460 220" fill="none">
+  <defs>
+    <!-- Background Gradient -->
+    <radialGradient id="bgGlow" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#1e1b2e" />
+      <stop offset="60%" stop-color="#0f0f1a" />
+      <stop offset="100%" stop-color="#07070d" />
+    </radialGradient>
+
+    <!-- Card Outer Frame -->
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#27272a" />
+      <stop offset="100%" stop-color="#18181b" />
+    </linearGradient>
+
+    <!-- LCD Bezel -->
+    <linearGradient id="bezelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#52525b" />
+      <stop offset="40%" stop-color="#3f3f46" />
+      <stop offset="100%" stop-color="#18181b" />
+    </linearGradient>
+
+    <!-- Screen Gradient -->
+    <linearGradient id="screenGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#d4dbb8" />
+      <stop offset="50%" stop-color="#c5cbb4" />
+      <stop offset="100%" stop-color="#a3ad8e" />
+    </linearGradient>
+
+    <!-- Screen Glare Reflection -->
+    <linearGradient id="screenGlare" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.18" />
+      <stop offset="40%" stop-color="#ffffff" stop-opacity="0.06" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </linearGradient>
+
+    <!-- CRT Scanline Pattern -->
+    <pattern id="scanlines" width="4" height="4" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="0" x2="4" y2="0" stroke="#000" stroke-width="1" opacity="0.07" />
+    </pattern>
+
+    <!-- Stat Bar Gradients -->
+    <linearGradient id="hpGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#991b1b" />
+      <stop offset="50%" stop-color="#dc2626" />
+      <stop offset="100%" stop-color="#7f001c" />
+    </linearGradient>
+    <linearGradient id="atkGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#a1a1aa" />
+      <stop offset="100%" stop-color="#e2dfde" />
+    </linearGradient>
+    <linearGradient id="defGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#d4d4d8" />
+      <stop offset="100%" stop-color="#ffffff" />
+    </linearGradient>
+    <linearGradient id="spdGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#334155" />
+      <stop offset="100%" stop-color="#64748b" />
+    </linearGradient>
+    <linearGradient id="chaosGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7f1d1d" />
+      <stop offset="50%" stop-color="#b91c1c" />
+      <stop offset="100%" stop-color="#dc2626" />
+    </linearGradient>
+
+    <!-- Bar Shine Overlay -->
+    <linearGradient id="barShine" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.25" />
+      <stop offset="40%" stop-color="#ffffff" stop-opacity="0" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.15" />
+    </linearGradient>
+
+    <!-- Glow filter for text -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="1.5" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+    <filter id="ledGlow">
+      <feGaussianBlur stdDeviation="2" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <style>
+      @keyframes spriteBob {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-3px); }
+        100% { transform: translateY(0px); }
+      }
+      @keyframes ledPulse {
+        0%, 100% { opacity: 0.6; }
+        50% { opacity: 1; }
+      }
+      @keyframes ledGlowPulse {
+        0%, 100% { opacity: 0.2; transform: scale(0.6); }
+        50% { opacity: 0.5; transform: scale(1); }
+      }
+      @keyframes hpPulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.85; }
+      }
+      .sprite-group { animation: spriteBob 3.5s ease-in-out infinite; }
+      .led-core { animation: ledPulse 1.8s ease-in-out infinite; }
+      .led-glow { animation: ledGlowPulse 1.8s ease-in-out infinite; transform-origin: 74px 160px; }
+      .hp-bar { animation: hpPulse 2s ease-in-out infinite; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="460" height="220" rx="16" fill="url(#bgGlow)" />
+
+  <!-- Subtle star field (static particles) -->
+  <circle cx="23" cy="8" r="0.8" fill="#ffffff" opacity="0.3" />
+  <circle cx="87" cy="12" r="0.6" fill="#ffffff" opacity="0.2" />
+  <circle cx="156" cy="5" r="0.7" fill="#ffffff" opacity="0.25" />
+  <circle cx="302" cy="9" r="0.5" fill="#ffffff" opacity="0.15" />
+  <circle cx="418" cy="6" r="0.8" fill="#ffffff" opacity="0.2" />
+  <circle cx="55" cy="210" r="0.6" fill="#ffffff" opacity="0.15" />
+  <circle cx="380" cy="214" r="0.7" fill="#ffffff" opacity="0.2" />
+
+  <!-- Outer Console Frame -->
+  <rect x="2" y="2" width="456" height="216" rx="14" fill="url(#cardGrad)" stroke="#52525b" stroke-width="2" />
+  <rect x="5" y="5" width="450" height="210" rx="11" fill="none" stroke="#7f001c" stroke-width="1" stroke-dasharray="2 4" opacity="0.5" />
+
+  <!-- Glowing Corner Brackets -->
+  <!-- Top-left -->
+  <path d="M 10 16 L 10 10 L 16 10" stroke="#7f001c" stroke-width="2" fill="none" opacity="0.8" />
+  <path d="M 11 17 L 11 11 L 17 11" stroke="#f87171" stroke-width="0.8" fill="none" opacity="0.3" />
+  <!-- Top-right -->
+  <path d="M 450 16 L 450 10 L 444 10" stroke="#7f001c" stroke-width="2" fill="none" opacity="0.8" />
+  <path d="M 449 17 L 449 11 L 443 11" stroke="#f87171" stroke-width="0.8" fill="none" opacity="0.3" />
+  <!-- Bottom-left -->
+  <path d="M 10 204 L 10 210 L 16 210" stroke="#7f001c" stroke-width="2" fill="none" opacity="0.8" />
+  <path d="M 11 203 L 11 209 L 17 209" stroke="#f87171" stroke-width="0.8" fill="none" opacity="0.3" />
+  <!-- Bottom-right -->
+  <path d="M 450 204 L 450 210 L 444 210" stroke="#7f001c" stroke-width="2" fill="none" opacity="0.8" />
+  <path d="M 449 203 L 449 209 L 443 209" stroke="#f87171" stroke-width="0.8" fill="none" opacity="0.3" />
+
+  <!-- Circuit trace dots along top edge -->
+  <circle cx="30" cy="8" r="1" fill="#7f001c" opacity="0.5" />
+  <circle cx="60" cy="8" r="0.7" fill="#7f001c" opacity="0.3" />
+  <circle cx="430" cy="8" r="1" fill="#7f001c" opacity="0.5" />
+  <circle cx="400" cy="8" r="0.7" fill="#7f001c" opacity="0.3" />
+
+  <!-- Left Side: LCD Gameboy Bezel -->
+  <rect x="18" y="18" width="112" height="184" rx="6" fill="url(#bezelGrad)" stroke="#18181b" stroke-width="1.5" />
+
+  <!-- Left side screw dots -->
+  <circle cx="22" cy="22" r="1.5" fill="#18181b" opacity="0.6" />
+  <circle cx="22" cy="198" r="1.5" fill="#18181b" opacity="0.6" />
+  <circle cx="126" cy="22" r="1.5" fill="#18181b" opacity="0.6" />
+  <circle cx="126" cy="198" r="1.5" fill="#18181b" opacity="0.6" />
+
+  <!-- Screen LCD Panel -->
+  <rect x="24" y="24" width="100" height="115" rx="3" fill="url(#screenGrad)" stroke="#18181b" stroke-width="1.5" />
+
+  <!-- CRT Scanline Overlay -->
+  <rect x="24" y="24" width="100" height="115" rx="3" fill="url(#scanlines)" />
+
+  <!-- Screen Glare Reflection -->
+  <polygon points="24,24 124,24 24,115" fill="url(#screenGlare)" />
+
+  <!-- Screen Pixel Grid Corner Marks -->
+  <rect x="26" y="26" width="4" height="4" fill="#18181b" opacity="0.08" />
+  <rect x="118" y="26" width="4" height="4" fill="#18181b" opacity="0.08" />
+  <rect x="26" y="137" width="4" height="4" fill="#18181b" opacity="0.08" />
+  <rect x="118" y="137" width="4" height="4" fill="#18181b" opacity="0.08" />
+
+  <!-- Sprite Shadow -->
+  <ellipse cx="76" cy="140" rx="16" ry="3" fill="#000" opacity="0.12" class="sprite-group" />
+
+  <!-- Animated Procedural Sprite -->
+  <g class="sprite-group" transform="translate(26, 30)">
+    <rect x="32" y="12" width="4" height="4" fill="#1a1a1a" />
+<rect x="36" y="12" width="4" height="4" fill="#1a1a1a" />
+<rect x="40" y="12" width="4" height="4" fill="#1a1a1a" />
+<rect x="52" y="12" width="4" height="4" fill="#1a1a1a" />
+<rect x="56" y="12" width="4" height="4" fill="#1a1a1a" />
+<rect x="60" y="12" width="4" height="4" fill="#1a1a1a" />
+<rect x="28" y="16" width="4" height="4" fill="#1a1a1a" />
+<rect x="32" y="16" width="4" height="4" fill="#7f001c" />
+<rect x="36" y="16" width="4" height="4" fill="#7f001c" />
+<rect x="40" y="16" width="4" height="4" fill="#7f001c" />
+<rect x="44" y="16" width="4" height="4" fill="#1a1a1a" />
+<rect x="48" y="16" width="4" height="4" fill="#1a1a1a" />
+<rect x="52" y="16" width="4" height="4" fill="#7f001c" />
+<rect x="56" y="16" width="4" height="4" fill="#7f001c" />
+<rect x="60" y="16" width="4" height="4" fill="#7f001c" />
+<rect x="64" y="16" width="4" height="4" fill="#1a1a1a" />
+<rect x="28" y="20" width="4" height="4" fill="#1a1a1a" />
+<rect x="32" y="20" width="4" height="4" fill="#7f001c" />
+<rect x="36" y="20" width="4" height="4" fill="#7f001c" />
+<rect x="40" y="20" width="4" height="4" fill="#7f001c" />
+<rect x="44" y="20" width="4" height="4" fill="#1a1a1a" />
+<rect x="48" y="20" width="4" height="4" fill="#1a1a1a" />
+<rect x="52" y="20" width="4" height="4" fill="#7f001c" />
+<rect x="56" y="20" width="4" height="4" fill="#7f001c" />
+<rect x="60" y="20" width="4" height="4" fill="#7f001c" />
+<rect x="64" y="20" width="4" height="4" fill="#1a1a1a" />
+<rect x="20" y="24" width="4" height="4" fill="#1a1a1a" />
+<rect x="24" y="24" width="4" height="4" fill="#1a1a1a" />
+<rect x="28" y="24" width="4" height="4" fill="#1a1a1a" />
+<rect x="32" y="24" width="4" height="4" fill="#7f001c" />
+<rect x="36" y="24" width="4" height="4" fill="#7f001c" />
+<rect x="40" y="24" width="4" height="4" fill="#7f001c" />
+<rect x="44" y="24" width="4" height="4" fill="#1a1a1a" />
+<rect x="48" y="24" width="4" height="4" fill="#1a1a1a" />
+<rect x="52" y="24" width="4" height="4" fill="#7f001c" />
+<rect x="56" y="24" width="4" height="4" fill="#7f001c" />
+<rect x="60" y="24" width="4" height="4" fill="#7f001c" />
+<rect x="64" y="24" width="4" height="4" fill="#1a1a1a" />
+<rect x="68" y="24" width="4" height="4" fill="#1a1a1a" />
+<rect x="72" y="24" width="4" height="4" fill="#1a1a1a" />
+<rect x="16" y="28" width="4" height="4" fill="#1a1a1a" />
+<rect x="20" y="28" width="4" height="4" fill="#e2dfde" />
+<rect x="24" y="28" width="4" height="4" fill="#e2dfde" />
+<rect x="28" y="28" width="4" height="4" fill="#7f001c" />
+<rect x="32" y="28" width="4" height="4" fill="#7f001c" />
+<rect x="36" y="28" width="4" height="4" fill="#7f001c" />
+<rect x="40" y="28" width="4" height="4" fill="#e2dfde" />
+<rect x="44" y="28" width="4" height="4" fill="#e2dfde" />
+<rect x="48" y="28" width="4" height="4" fill="#e2dfde" />
+<rect x="52" y="28" width="4" height="4" fill="#e2dfde" />
+<rect x="56" y="28" width="4" height="4" fill="#7f001c" />
+<rect x="60" y="28" width="4" height="4" fill="#7f001c" />
+<rect x="64" y="28" width="4" height="4" fill="#7f001c" />
+<rect x="68" y="28" width="4" height="4" fill="#e2dfde" />
+<rect x="72" y="28" width="4" height="4" fill="#e2dfde" />
+<rect x="76" y="28" width="4" height="4" fill="#1a1a1a" />
+<rect x="20" y="32" width="4" height="4" fill="#1a1a1a" />
+<rect x="24" y="32" width="4" height="4" fill="#7f001c" />
+<rect x="28" y="32" width="4" height="4" fill="#1a1a1a" />
+<rect x="32" y="32" width="4" height="4" fill="#e2dfde" />
+<rect x="36" y="32" width="4" height="4" fill="#e2dfde" />
+<rect x="40" y="32" width="4" height="4" fill="#e2dfde" />
+<rect x="44" y="32" width="4" height="4" fill="#e2dfde" />
+<rect x="48" y="32" width="4" height="4" fill="#e2dfde" />
+<rect x="52" y="32" width="4" height="4" fill="#e2dfde" />
+<rect x="56" y="32" width="4" height="4" fill="#e2dfde" />
+<rect x="60" y="32" width="4" height="4" fill="#e2dfde" />
+<rect x="64" y="32" width="4" height="4" fill="#1a1a1a" />
+<rect x="68" y="32" width="4" height="4" fill="#7f001c" />
+<rect x="72" y="32" width="4" height="4" fill="#1a1a1a" />
+<rect x="20" y="36" width="4" height="4" fill="#1a1a1a" />
+<rect x="24" y="36" width="4" height="4" fill="#1a1a1a" />
+<rect x="28" y="36" width="4" height="4" fill="#e2dfde" />
+<rect x="32" y="36" width="4" height="4" fill="#e2dfde" />
+<rect x="36" y="36" width="4" height="4" fill="#e2dfde" />
+<rect x="40" y="36" width="4" height="4" fill="#e2dfde" />
+<rect x="44" y="36" width="4" height="4" fill="#e2dfde" />
+<rect x="48" y="36" width="4" height="4" fill="#e2dfde" />
+<rect x="52" y="36" width="4" height="4" fill="#e2dfde" />
+<rect x="56" y="36" width="4" height="4" fill="#e2dfde" />
+<rect x="60" y="36" width="4" height="4" fill="#e2dfde" />
+<rect x="64" y="36" width="4" height="4" fill="#e2dfde" />
+<rect x="68" y="36" width="4" height="4" fill="#1a1a1a" />
+<rect x="72" y="36" width="4" height="4" fill="#1a1a1a" />
+<rect x="16" y="40" width="4" height="4" fill="#1a1a1a" />
+<rect x="20" y="40" width="4" height="4" fill="#e2dfde" />
+<rect x="24" y="40" width="4" height="4" fill="#e2dfde" />
+<rect x="28" y="40" width="4" height="4" fill="#1a1a1a" />
+<rect x="32" y="40" width="4" height="4" fill="#7f001c" />
+<rect x="36" y="40" width="4" height="4" fill="#e2dfde" />
+<rect x="40" y="40" width="4" height="4" fill="#7f001c" />
+<rect x="44" y="40" width="4" height="4" fill="#7f001c" />
+<rect x="48" y="40" width="4" height="4" fill="#7f001c" />
+<rect x="52" y="40" width="4" height="4" fill="#7f001c" />
+<rect x="56" y="40" width="4" height="4" fill="#e2dfde" />
+<rect x="60" y="40" width="4" height="4" fill="#7f001c" />
+<rect x="64" y="40" width="4" height="4" fill="#1a1a1a" />
+<rect x="68" y="40" width="4" height="4" fill="#e2dfde" />
+<rect x="72" y="40" width="4" height="4" fill="#e2dfde" />
+<rect x="76" y="40" width="4" height="4" fill="#1a1a1a" />
+<rect x="12" y="44" width="4" height="4" fill="#1a1a1a" />
+<rect x="16" y="44" width="4" height="4" fill="#e2dfde" />
+<rect x="20" y="44" width="4" height="4" fill="#e2dfde" />
+<rect x="24" y="44" width="4" height="4" fill="#7f001c" />
+<rect x="28" y="44" width="4" height="4" fill="#7f001c" />
+<rect x="32" y="44" width="4" height="4" fill="#7f001c" />
+<rect x="36" y="44" width="4" height="4" fill="#e2dfde" />
+<rect x="40" y="44" width="4" height="4" fill="#e2dfde" />
+<rect x="44" y="44" width="4" height="4" fill="#e2dfde" />
+<rect x="48" y="44" width="4" height="4" fill="#e2dfde" />
+<rect x="52" y="44" width="4" height="4" fill="#e2dfde" />
+<rect x="56" y="44" width="4" height="4" fill="#e2dfde" />
+<rect x="60" y="44" width="4" height="4" fill="#7f001c" />
+<rect x="64" y="44" width="4" height="4" fill="#7f001c" />
+<rect x="68" y="44" width="4" height="4" fill="#7f001c" />
+<rect x="72" y="44" width="4" height="4" fill="#e2dfde" />
+<rect x="76" y="44" width="4" height="4" fill="#e2dfde" />
+<rect x="80" y="44" width="4" height="4" fill="#1a1a1a" />
+<rect x="16" y="48" width="4" height="4" fill="#1a1a1a" />
+<rect x="20" y="48" width="4" height="4" fill="#1a1a1a" />
+<rect x="24" y="48" width="4" height="4" fill="#1a1a1a" />
+<rect x="28" y="48" width="4" height="4" fill="#7f001c" />
+<rect x="32" y="48" width="4" height="4" fill="#e2dfde" />
+<rect x="36" y="48" width="4" height="4" fill="#7f001c" />
+<rect x="40" y="48" width="4" height="4" fill="#1a1a1a" />
+<rect x="44" y="48" width="4" height="4" fill="#e2dfde" />
+<rect x="48" y="48" width="4" height="4" fill="#e2dfde" />
+<rect x="52" y="48" width="4" height="4" fill="#1a1a1a" />
+<rect x="56" y="48" width="4" height="4" fill="#7f001c" />
+<rect x="60" y="48" width="4" height="4" fill="#e2dfde" />
+<rect x="64" y="48" width="4" height="4" fill="#7f001c" />
+<rect x="68" y="48" width="4" height="4" fill="#1a1a1a" />
+<rect x="72" y="48" width="4" height="4" fill="#1a1a1a" />
+<rect x="76" y="48" width="4" height="4" fill="#1a1a1a" />
+<rect x="12" y="52" width="4" height="4" fill="#1a1a1a" />
+<rect x="16" y="52" width="4" height="4" fill="#7f001c" />
+<rect x="20" y="52" width="4" height="4" fill="#1a1a1a" />
+<rect x="24" y="52" width="4" height="4" fill="#7f001c" />
+<rect x="28" y="52" width="4" height="4" fill="#e2dfde" />
+<rect x="32" y="52" width="4" height="4" fill="#e2dfde" />
+<rect x="36" y="52" width="4" height="4" fill="#7f001c" />
+<rect x="40" y="52" width="4" height="4" fill="#e2dfde" />
+<rect x="44" y="52" width="4" height="4" fill="#7f001c" />
+<rect x="48" y="52" width="4" height="4" fill="#7f001c" />
+<rect x="52" y="52" width="4" height="4" fill="#e2dfde" />
+<rect x="56" y="52" width="4" height="4" fill="#7f001c" />
+<rect x="60" y="52" width="4" height="4" fill="#e2dfde" />
+<rect x="64" y="52" width="4" height="4" fill="#e2dfde" />
+<rect x="68" y="52" width="4" height="4" fill="#7f001c" />
+<rect x="72" y="52" width="4" height="4" fill="#1a1a1a" />
+<rect x="76" y="52" width="4" height="4" fill="#7f001c" />
+<rect x="80" y="52" width="4" height="4" fill="#1a1a1a" />
+<rect x="8" y="56" width="4" height="4" fill="#1a1a1a" />
+<rect x="12" y="56" width="4" height="4" fill="#e2dfde" />
+<rect x="16" y="56" width="4" height="4" fill="#e2dfde" />
+<rect x="20" y="56" width="4" height="4" fill="#e2dfde" />
+<rect x="24" y="56" width="4" height="4" fill="#e2dfde" />
+<rect x="28" y="56" width="4" height="4" fill="#1a1a1a" />
+<rect x="32" y="56" width="4" height="4" fill="#7f001c" />
+<rect x="36" y="56" width="4" height="4" fill="#7f001c" />
+<rect x="40" y="56" width="4" height="4" fill="#7f001c" />
+<rect x="44" y="56" width="4" height="4" fill="#7f001c" />
+<rect x="48" y="56" width="4" height="4" fill="#7f001c" />
+<rect x="52" y="56" width="4" height="4" fill="#7f001c" />
+<rect x="56" y="56" width="4" height="4" fill="#7f001c" />
+<rect x="60" y="56" width="4" height="4" fill="#7f001c" />
+<rect x="64" y="56" width="4" height="4" fill="#1a1a1a" />
+<rect x="68" y="56" width="4" height="4" fill="#e2dfde" />
+<rect x="72" y="56" width="4" height="4" fill="#e2dfde" />
+<rect x="76" y="56" width="4" height="4" fill="#e2dfde" />
+<rect x="80" y="56" width="4" height="4" fill="#e2dfde" />
+<rect x="84" y="56" width="4" height="4" fill="#1a1a1a" />
+<rect x="8" y="60" width="4" height="4" fill="#1a1a1a" />
+<rect x="12" y="60" width="4" height="4" fill="#e2dfde" />
+<rect x="16" y="60" width="4" height="4" fill="#e2dfde" />
+<rect x="20" y="60" width="4" height="4" fill="#e2dfde" />
+<rect x="24" y="60" width="4" height="4" fill="#7f001c" />
+<rect x="28" y="60" width="4" height="4" fill="#7f001c" />
+<rect x="32" y="60" width="4" height="4" fill="#7f001c" />
+<rect x="36" y="60" width="4" height="4" fill="#7f001c" />
+<rect x="40" y="60" width="4" height="4" fill="#7f001c" />
+<rect x="44" y="60" width="4" height="4" fill="#7f001c" />
+<rect x="48" y="60" width="4" height="4" fill="#7f001c" />
+<rect x="52" y="60" width="4" height="4" fill="#7f001c" />
+<rect x="56" y="60" width="4" height="4" fill="#7f001c" />
+<rect x="60" y="60" width="4" height="4" fill="#7f001c" />
+<rect x="64" y="60" width="4" height="4" fill="#7f001c" />
+<rect x="68" y="60" width="4" height="4" fill="#7f001c" />
+<rect x="72" y="60" width="4" height="4" fill="#e2dfde" />
+<rect x="76" y="60" width="4" height="4" fill="#e2dfde" />
+<rect x="80" y="60" width="4" height="4" fill="#e2dfde" />
+<rect x="84" y="60" width="4" height="4" fill="#1a1a1a" />
+<rect x="12" y="64" width="4" height="4" fill="#1a1a1a" />
+<rect x="16" y="64" width="4" height="4" fill="#1a1a1a" />
+<rect x="20" y="64" width="4" height="4" fill="#7f001c" />
+<rect x="24" y="64" width="4" height="4" fill="#7f001c" />
+<rect x="28" y="64" width="4" height="4" fill="#7f001c" />
+<rect x="32" y="64" width="4" height="4" fill="#7f001c" />
+<rect x="36" y="64" width="4" height="4" fill="#7f001c" />
+<rect x="40" y="64" width="4" height="4" fill="#e2dfde" />
+<rect x="44" y="64" width="4" height="4" fill="#7f001c" />
+<rect x="48" y="64" width="4" height="4" fill="#7f001c" />
+<rect x="52" y="64" width="4" height="4" fill="#e2dfde" />
+<rect x="56" y="64" width="4" height="4" fill="#7f001c" />
+<rect x="60" y="64" width="4" height="4" fill="#7f001c" />
+<rect x="64" y="64" width="4" height="4" fill="#7f001c" />
+<rect x="68" y="64" width="4" height="4" fill="#7f001c" />
+<rect x="72" y="64" width="4" height="4" fill="#7f001c" />
+<rect x="76" y="64" width="4" height="4" fill="#1a1a1a" />
+<rect x="80" y="64" width="4" height="4" fill="#1a1a1a" />
+<rect x="20" y="68" width="4" height="4" fill="#1a1a1a" />
+<rect x="24" y="68" width="4" height="4" fill="#7f001c" />
+<rect x="28" y="68" width="4" height="4" fill="#7f001c" />
+<rect x="32" y="68" width="4" height="4" fill="#7f001c" />
+<rect x="36" y="68" width="4" height="4" fill="#7f001c" />
+<rect x="40" y="68" width="4" height="4" fill="#7f001c" />
+<rect x="44" y="68" width="4" height="4" fill="#1a1a1a" />
+<rect x="48" y="68" width="4" height="4" fill="#1a1a1a" />
+<rect x="52" y="68" width="4" height="4" fill="#7f001c" />
+<rect x="56" y="68" width="4" height="4" fill="#7f001c" />
+<rect x="60" y="68" width="4" height="4" fill="#7f001c" />
+<rect x="64" y="68" width="4" height="4" fill="#7f001c" />
+<rect x="68" y="68" width="4" height="4" fill="#7f001c" />
+<rect x="72" y="68" width="4" height="4" fill="#1a1a1a" />
+<rect x="20" y="72" width="4" height="4" fill="#1a1a1a" />
+<rect x="24" y="72" width="4" height="4" fill="#7f001c" />
+<rect x="28" y="72" width="4" height="4" fill="#7f001c" />
+<rect x="32" y="72" width="4" height="4" fill="#7f001c" />
+<rect x="36" y="72" width="4" height="4" fill="#7f001c" />
+<rect x="40" y="72" width="4" height="4" fill="#7f001c" />
+<rect x="44" y="72" width="4" height="4" fill="#1a1a1a" />
+<rect x="48" y="72" width="4" height="4" fill="#1a1a1a" />
+<rect x="52" y="72" width="4" height="4" fill="#7f001c" />
+<rect x="56" y="72" width="4" height="4" fill="#7f001c" />
+<rect x="60" y="72" width="4" height="4" fill="#7f001c" />
+<rect x="64" y="72" width="4" height="4" fill="#7f001c" />
+<rect x="68" y="72" width="4" height="4" fill="#7f001c" />
+<rect x="72" y="72" width="4" height="4" fill="#1a1a1a" />
+<rect x="24" y="76" width="4" height="4" fill="#1a1a1a" />
+<rect x="28" y="76" width="4" height="4" fill="#1a1a1a" />
+<rect x="32" y="76" width="4" height="4" fill="#1a1a1a" />
+<rect x="36" y="76" width="4" height="4" fill="#1a1a1a" />
+<rect x="40" y="76" width="4" height="4" fill="#1a1a1a" />
+<rect x="52" y="76" width="4" height="4" fill="#1a1a1a" />
+<rect x="56" y="76" width="4" height="4" fill="#1a1a1a" />
+<rect x="60" y="76" width="4" height="4" fill="#1a1a1a" />
+<rect x="64" y="76" width="4" height="4" fill="#1a1a1a" />
+<rect x="68" y="76" width="4" height="4" fill="#1a1a1a" />
+
+  </g>
+
+  <!-- Decorative ground platform for sprite -->
+  <rect x="48" y="137" width="50" height="2" fill="#18181b" opacity="0.08" />
+
+  <!-- Battery/Status LED with glow -->
+  <circle cx="74" cy="160" r="6" fill="#7f001c" opacity="0.15" class="led-glow" />
+  <circle cx="74" cy="160" r="3" fill="#ef4444" class="led-core" />
+  <circle cx="74" cy="160" r="1.5" fill="#fca5a5" class="led-core" />
+
+  <!-- Screen Label Section -->
+  <rect x="24" y="145" width="100" height="42" rx="3" fill="#18181b" />
+  
+  <!-- LV display with decorative accent line -->
+  <line x1="30" y1="153" x2="118" y2="153" stroke="#7f001c" stroke-width="0.5" opacity="0.3" />
+  <text x="74" y="164" fill="#ffffff" font-family="monospace" font-size="9" font-weight="900" text-anchor="middle" letter-spacing="1">LV 40</text>
+  <text x="74" y="173" fill="#a1a1aa" font-family="monospace" font-size="6.5" opacity="0.7" text-anchor="middle" letter-spacing="0.5">ROASTEMON PROFILE</text>
+  <text x="74" y="182" fill="#7f001c" font-family="monospace" font-size="6" font-weight="bold" text-anchor="middle" letter-spacing="1">CHAOS NETWORK</text>
+  
+  <!-- Version badge in screen -->
+  <rect x="94" y="147" width="26" height="8" rx="2" fill="#7f001c" opacity="0.3" />
+  <text x="107" y="153" fill="#fca5a5" font-family="monospace" font-size="5" font-weight="bold" text-anchor="middle">GEN.2</text>
+
+  <!-- Right Panel: Username Bar -->
+  <rect x="142" y="18" width="300" height="24" rx="4" fill="#18181b" stroke="#27272a" stroke-width="0.5" />
+  <!-- Username with @ symbol highlight -->
+  <text x="150" y="34" fill="#7f001c" font-family="monospace" font-size="10" font-weight="900">@</text>
+  <text x="158" y="34" fill="#ffffff" font-family="monospace" font-size="10" font-weight="900" letter-spacing="0.5">KEVINJOBIN1</text>
+  
+  <!-- Win/Loss with trophy indicator -->
+  <text x="432" y="34" fill="#facc15" font-family="monospace" font-size="6" text-anchor="end" opacity="0.7">W</text>
+  <text x="426" y="34" fill="#ffffff" font-family="monospace" font-size="8.5" font-weight="bold" text-anchor="end">0</text>
+  <text x="440" y="28" fill="#a1a1aa" font-family="monospace" font-size="5" text-anchor="end" opacity="0.5">L</text>
+  <text x="440" y="34" fill="#a1a1aa" font-family="monospace" font-size="7" text-anchor="end">0</text>
+
+  <!-- Monster Name with glow -->
+  <text x="145" y="57" fill="#ffffff" font-family="monospace" font-size="12" font-weight="900" filter="url(#glow)">FORKACHU</text>
+
+  <!-- Decorative underline for mon name -->
+  <line x1="145" y1="60" x2="145" y2="60" stroke="#7f001c" stroke-width="1.5" opacity="0.6" />
+  <line x1="145" y1="60" x2="205" y2="60" stroke="#7f001c" stroke-width="1" opacity="0.3" />
+
+  <!-- Type Badge with gradient border -->
+  <rect x="330" y="46" width="112" height="16" rx="20" fill="#18181b" stroke="#7f001c" stroke-width="1.5" />
+  <rect x="331.5" y="47.5" width="109" height="13" rx="18" fill="none" stroke="#f87171" stroke-width="0.5" opacity="0.3" />
+  <text x="386" y="57" fill="#fca5a5" font-family="monospace" font-size="7.5" font-weight="bold" text-anchor="middle" letter-spacing="0.5">INFINITE-LOOP</text>
+
+  <!-- Separator -->
+  <line x1="142" y1="67" x2="442" y2="67" stroke="#334155" stroke-width="1" stroke-dasharray="2 4" opacity="0.4" />
+
+  <!-- Core Stats -->
+  <!-- HP -->
+  <text x="145" y="85" fill="#a1a1aa" font-family="monospace" font-size="7.5" font-weight="bold">HEALTH LOOP</text>
+  <text x="220" y="85" fill="#ffffff" font-family="monospace" font-size="8" font-weight="bold" text-anchor="end">51%</text>
+  <rect x="228" y="77" width="214" height="9" rx="3" fill="#18181b" />
+  <rect x="228" y="77" width="109" height="9" rx="3" fill="url(#hpGrad)" class="hp-bar" />
+  <rect x="228" y="77" width="109" height="9" rx="3" fill="url(#barShine)" />
+  <rect x="228" y="77" width="109" height="4" rx="2" fill="#ffffff" opacity="0.08" />
+
+  <!-- ATTACK -->
+  <text x="145" y="98" fill="#a1a1aa" font-family="monospace" font-size="7.5" font-weight="bold">BUG SUMMONS</text>
+  <text x="220" y="98" fill="#ffffff" font-family="monospace" font-size="8" font-weight="bold" text-anchor="end">84%</text>
+  <rect x="228" y="90" width="214" height="9" rx="3" fill="#18181b" />
+  <rect x="228" y="90" width="179" height="9" rx="3" fill="url(#atkGrad)" />
+  <rect x="228" y="90" width="179" height="9" rx="3" fill="url(#barShine)" />
+  <rect x="228" y="90" width="179" height="4" rx="2" fill="#ffffff" opacity="0.08" />
+
+  <!-- DEFENSE -->
+  <text x="145" y="111" fill="#a1a1aa" font-family="monospace" font-size="7.5" font-weight="bold">CODE SHIELD</text>
+  <text x="220" y="111" fill="#ffffff" font-family="monospace" font-size="8" font-weight="bold" text-anchor="end">60%</text>
+  <rect x="228" y="103" width="214" height="9" rx="3" fill="#18181b" />
+  <rect x="228" y="103" width="128" height="9" rx="3" fill="url(#defGrad)" />
+  <rect x="228" y="103" width="128" height="9" rx="3" fill="url(#barShine)" />
+  <rect x="228" y="103" width="128" height="4" rx="2" fill="#ffffff" opacity="0.08" />
+
+  <!-- SPEED -->
+  <text x="145" y="124" fill="#a1a1aa" font-family="monospace" font-size="7.5" font-weight="bold">CYCLE SPEED</text>
+  <text x="220" y="124" fill="#ffffff" font-family="monospace" font-size="8" font-weight="bold" text-anchor="end">52%</text>
+  <rect x="228" y="116" width="214" height="9" rx="3" fill="#18181b" />
+  <rect x="228" y="116" width="111" height="9" rx="3" fill="url(#spdGrad)" />
+  <rect x="228" y="116" width="111" height="9" rx="3" fill="url(#barShine)" />
+  <rect x="228" y="116" width="111" height="4" rx="2" fill="#ffffff" opacity="0.08" />
+
+  <!-- CHAOS -->
+  <text x="145" y="137" fill="#a1a1aa" font-family="monospace" font-size="7.5" font-weight="bold">CHAOS FLOW</text>
+  <text x="220" y="137" fill="#ffffff" font-family="monospace" font-size="8" font-weight="bold" text-anchor="end">30%</text>
+  <rect x="228" y="129" width="214" height="9" rx="3" fill="#18181b" />
+  <rect x="228" y="129" width="64" height="9" rx="3" fill="url(#chaosGrad)" />
+  <rect x="228" y="129" width="64" height="9" rx="3" fill="url(#barShine)" />
+  <rect x="228" y="129" width="64" height="4" rx="2" fill="#ffffff" opacity="0.08" />
+
+  <!-- Dialogue / Roast Box -->
+  <!-- Outer bezel -->
+  <rect x="140" y="146" width="304" height="42" rx="5" fill="#18181b" stroke="#27272a" stroke-width="1" />
+  <!-- Inner dialogue background -->
+  <rect x="142" y="148" width="300" height="38" rx="3" fill="#f1f5f9" />
+  <!-- Scanlines inside dialogue box -->
+  <rect x="142" y="148" width="300" height="38" rx="3" fill="url(#scanlines)" opacity="0.3" />
+  
+  <!-- Dialogue top accent line -->
+  <line x1="142" y1="148" x2="442" y2="148" stroke="#7f001c" stroke-width="1" />
+  <!-- Dialogue pointer triangle (retro game style) -->
+  <polygon points="150,148 150,156 158,148" fill="#7f001c" opacity="0.8" />
+  <polygon points="151,149 151,155 157,149" fill="#f1f5f9" />
+
+  <text x="150" y="159" fill="#7f001c" font-family="monospace" font-size="7.5" font-weight="900">BIO IS STANDARD DEFAULT TEMPLATE.</text>
+<text x="150" y="170" fill="#7f001c" font-family="monospace" font-size="7.5" font-weight="900">CRAWLS STACKOVERFLOW DAILY FOR</text>
+<text x="150" y="181" fill="#7f001c" font-family="monospace" font-size="7.5" font-weight="900">SOLUTIONS.</text>
+
+
+  <!-- Footer Watermark -->
+  <text x="145" y="207" fill="#7f001c" font-family="monospace" font-size="6" font-weight="bold" letter-spacing="1.5">● GITTYMON-STER</text>
+  
+  <!-- Generation badge in footer -->
+  <rect x="256" y="198" width="36" height="10" rx="3" fill="#7f001c" opacity="0.2" />
+  <text x="274" y="205" fill="#7f001c" font-family="monospace" font-size="5.5" font-weight="bold" text-anchor="middle" letter-spacing="0.5">V2.0</text>
+
+  <text x="442" y="207" fill="#3f3f46" font-family="monospace" font-size="6" font-weight="bold" text-anchor="end" opacity="0.5">GITHUB.COM/KEVINJOBIN1/GITTYMON</text>
+
+</svg>
