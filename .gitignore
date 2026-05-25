@@ -16,3 +16,8 @@ coverage/
 # Generated data files
 leaderboard.json
 summon-cache.json
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
