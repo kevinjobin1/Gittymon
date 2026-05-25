@@ -38,11 +38,19 @@ if (config.assets?.not_found_handling) {
 }
 
 // Fix assets.directory: build script promotes dist/client/* to dist/ then deletes dist/client.
-// Wrangler resolves assets.directory relative to the project root (CWD), not the config file.
+// The @cloudflare/vite-plugin sets this relative to the config file's location:
+//   - When config is at dist/wrangler.json:    "dist/client"
+//   - When config is at dist/gittymon/wrangler.json: "../client"
+// After the build script promotes assets, they live at dist/ root, so we need
+// "dist" (config at dist/) or ".." (config at dist/subdir/).
 if (config.assets?.directory === 'dist/client') {
   config.assets.directory = 'dist';
   changed = true;
   console.log('Updated assets.directory from "dist/client" to "dist" in', configPath);
+} else if (config.assets?.directory === '../client') {
+  config.assets.directory = '..';
+  changed = true;
+  console.log('Updated assets.directory from "../client" to ".." in', configPath);
 }
 
 if (changed) {
