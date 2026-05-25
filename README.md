@@ -19,6 +19,28 @@
   <em>Summon your monster, check stats, battle bugs, and climb the leaderboard — all inside a faithful Gameboy shell.</em>
 </p>
 
+<br />
+
+### 🎬 Live Demo
+
+<p align="center">
+  <img src="screencast.gif" alt="Gittymon App Screencast" width="100%" style="max-width: 390px; border-radius: 12px; border: 2px solid #1a1a1a;" />
+  <br />
+  <em>Full flow: enter a GitHub username → press SUMMON → watch your Roast-mon come to life!</em>
+</p>
+
+<br />
+
+### 📸 Flow Screenshots
+
+<p align="center">
+  <img src="screenshot-splash.png" alt="1. Splash & Enter Username" width="30%" style="border-radius: 8px; border: 2px solid #1a1a1a; display: inline-block;" />
+  <img src="screenshot-input.png" alt="2. GitHub username entered" width="30%" style="border-radius: 8px; border: 2px solid #1a1a1a; display: inline-block; margin-left: 8px;" />
+  <img src="screenshot-result.png" alt="3. Summoned monster result" width="30%" style="border-radius: 8px; border: 2px solid #1a1a1a; display: inline-block; margin-left: 8px;" />
+  <br />
+  <em>1. Enter a GitHub username → 2. Press SUMMON → 3. Get your Roast-mon!</em>
+</p>
+
 ---
 
 ## Overview
@@ -151,6 +173,12 @@ Returns a [shields.io](https://shields.io/) compatible JSON endpoint for dynamic
 https://img.shields.io/endpoint?url=https://your-app.com/api/badge/octocat&style=for-the-badge
 ```
 
+**Live example for @kevinjobin1 (LV 40):**
+
+```
+https://img.shields.io/badge/Gittymon-LV%2040-7f001c?style=for-the-badge&logo=github&logoColor=e2dfde
+```
+
 ### `GET /card/:username`
 Full HTML page with Open Graph / Twitter Card meta tags. Designed for social sharing — renders the animated GIF with stats, type badge, and roast.
 
@@ -173,6 +201,52 @@ Add your Roast-mon card to any GitHub README or website:
 **Dynamic Badge (shields.io, shows rank + level):**
 ```markdown
 ![](https://img.shields.io/endpoint?url=https://your-app.com/api/badge/your_username&style=for-the-badge)
+```
+
+---
+
+### Live Example — @kevinjobin1
+
+Here's what a summoned Roast-mon looks like. This is the actual generated card for [@kevinjobin1](https://github.com/kevinjobin1):
+
+| SVG Card | Animated GIF Card |
+|:---:|:---:|
+| <img src="example-card.svg" alt="@kevinjobin1 Gittymon SVG Card" width="100%" /> | <img src="example-card.gif" alt="@kevinjobin1 Gittymon GIF Card" width="100%" /> |
+| **Forknado** — LV 24 LowFollower. _"6 followers? More like 6 lines of code!"_ | Bouncy sprite + typewriter roast — 1.6s loop |
+
+The files `example-card.svg` and `example-card.gif` are checked into the repo so visitors can see a real generated card without running the app.
+
+---
+
+## Badges
+
+Add a dynamic Gittymon badge to your GitHub profile README:
+
+**Dynamic (requires deployed app — auto-updates with rank & level):**
+```markdown
+[![](https://img.shields.io/endpoint?url=https://your-app.com/api/badge/your_username&style=for-the-badge)](https://your-app.com)
+```
+
+**Static (no deployment needed — shows current level, update manually):**
+```markdown
+[![](https://img.shields.io/badge/Gittymon-LV%2040-7f001c?style=for-the-badge&logo=github&logoColor=e2dfde)](https://github.com/your_username)
+```
+
+### Live Badge — @kevinjobin1
+
+Here's the actual badge for [@kevinjobin1](https://github.com/kevinjobin1), generated from the API:
+
+<p align="center">
+  <a href="https://github.com/kevinjobin1">
+    <img src="https://img.shields.io/badge/Gittymon-LV%2040-7f001c?style=for-the-badge&logo=github&logoColor=e2dfde" alt="@kevinjobin1 Gittymon Badge" />
+  </a>
+  <br />
+  <em>You can use this exact badge on your GitHub profile — just update the LV number when you level up!</em>
+</p>
+
+To render the live dynamic badge (auto-updates with leaderboard rank), deploy the app and use:
+```markdown
+[![](https://img.shields.io/endpoint?url=https://your-app.com/api/badge/kevinjobin1&style=for-the-badge)](https://your-app.com)
 ```
 
 ---
@@ -230,9 +304,10 @@ Gittymon/
 
 ## Deployment
 
-### AI Studio (Google Cloud Run)
+### Environment Variables 
 
-This app is designed to deploy on [AI Studio](https://ai.studio/). The `GROQ_API_KEY` and `APP_URL` are injected as environment variables.
+When deploying, make sure to set the `GROQ_API_KEY` environment variable with your Groq API key. If deploying to a platform like Vercel or Netlify, you can add this in the project settings under environment variables.
+The `GROQ_API_KEY` and `APP_URL` are injected as environment variables.
 
 ### Manual Deployment
 
@@ -250,6 +325,14 @@ node dist/server.cjs
 |------|---------|
 | `leaderboard.json` | Win/loss records for all players. Preseeded with 5 coding legends. Auto-created if missing. |
 | `summon-cache.json` | Caches AI-generated monster data by GitHub username. Prevents redundant API calls. Max 500 entries. Pass `refresh: true` to bypass. |
+| `example-card.svg` | Example generated SVG card for @kevinjobin1 — preview in README without running the app. |
+| `example-card.gif` | Example generated animated GIF card for @kevinjobin1 — preview in README without running the app. |
+| `screenshot.png` | App screenshot used in README header. |
+| `screenshot-splash.png` | Splash screen with username input — step 1 of the flow. |
+| `screenshot-input.png` | Username entered — step 2 of the flow. |
+| `screenshot-result.png` | Summoned monster result — step 3 of the flow. |
+| `screencast.gif` | Animated screencast GIF showing the full app flow (splash → type username → summon → result). |
+| `social-preview.png` | Open Graph / social preview image (1280×640) — used when the app URL is shared on social media or messaging platforms. Features the Forknado card centered on a dark branded background. |
 
 ---
 

@@ -5,6 +5,7 @@ dist/
 .antigravity/
 DESIGN.md
 knowledge.md
+*spec.md
 .vscode/
 coverage/
 .DS_Store
