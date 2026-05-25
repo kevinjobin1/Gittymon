@@ -15,7 +15,6 @@
 </p>
 
 <p align="center">
-  <img src="screenshot.png" alt="Gittymon App Screenshot" width="100%" style="max-width: 700px; border-radius: 12px; border: 2px solid #1a1a1a;" />
   <br />
   <em>Summon your monster, check stats, battle bugs, and climb the leaderboard — all inside a faithful Gameboy shell.</em>
 </p>
