@@ -9,6 +9,8 @@ export default defineConfig({
       threshold: 0.2,
     },
   },
+  // OS-independent snapshot paths so local and CI use the same baselines
+  snapshotPathTemplate: '{testDir}/{testFileName}-snapshots/{arg}-{projectName}{ext}',
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:3000',

@@ -83,16 +83,6 @@ export function buildSpriteGrid(seed: string, frame: number, paletteOverride?: P
 
   const grid: number[][] = Array.from({ length: 24 }, () => Array(24).fill(0));
 
-  // ── Helper: fill pixel with pattern override ──
-  const fillWithPattern = (y: number, x: number, base: number): number => {
-    if (base === 0) return 0;
-    if (base === 1 || base === 4 || base === 5) return base;
-    if (base === 2 && patternType === 1 && (Math.floor(y / 2) % 2 === 0)) return 4; // stripes
-    if (base === 2 && patternType === 2 && (y % 3 === 0 && x % 3 === 0)) return 4;  // spots
-    if (base === 2 && patternType === 3 && ((y + x) % 4 < 2)) return 3;             // checker → accent
-    return base;
-  };
-
   // ═══════════════════════════════════════════════
   //  1. CORE BODY
   // ═══════════════════════════════════════════════

@@ -17,6 +17,9 @@ coverage/
 leaderboard.json
 summon-cache.json
 
+# Generated shell HTML — committed as placeholder, overwritten by build
+# src/shellHtml.ts
+
 # wrangler files
 .wrangler
 .dev.vars*

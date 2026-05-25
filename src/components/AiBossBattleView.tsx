@@ -136,7 +136,7 @@ export function AiBossBattleView({
       });
 
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json() as { comment?: string };
         // Remove quotes around the comments returned from API if needed
         const cleanComment = data.comment ? data.comment.replace(/^"|"$/g, '') : '';
         setNarration(cleanComment || `Your simple codes fail to challenge the Y2K Engine!`);

@@ -76,13 +76,6 @@ function buildServerSpriteGrid(seed: string, frame: number): ServerSpriteResult 
 
   const grid: number[][] = Array.from({ length: 24 }, () => Array(24).fill(0));
 
-  const fillWithPattern = (y: number, x: number, base: number): number => {
-    if (base === 0 || base === 1 || base === 4 || base === 5) return base;
-    if (base === 2 && patternType === 1 && (Math.floor(y / 2) % 2 === 0)) return 4;
-    if (base === 2 && patternType === 2 && (y % 3 === 0 && x % 3 === 0)) return 4;
-    if (base === 2 && patternType === 3 && ((y + x) % 4 < 2)) return 3;
-    return base;
-  };
 
   // 1. CORE BODY
   for (let y = 4; y < 20; y++) {

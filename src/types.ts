@@ -85,6 +85,21 @@ export interface SummonCacheEntry {
   generatedAt: string;
 }
 
+export type ScreenID = 'SPLASH' | 'SUMMONING' | 'HUB' | 'DETAILS' | 'BATTLE' | 'HISTORY' | 'LEADERBOARD' | 'PVP_LOBBY' | 'PVP_BATTLE' | 'AI_BOSS_BATTLE' | 'EXPORT_EMBED';
+
+export interface BattleState {
+  playerHP: number;
+  playerMaxHP: number;
+  enemyName: string;
+  enemyHP: number;
+  enemyMaxHP: number;
+  enemyLevel: number;
+  enemySpriteSeed: string;
+  logs: string[];
+  isOver: boolean;
+  result?: 'WIN' | 'LOSE' | 'RUN';
+}
+
 export interface Env {
   LEADERBOARD: KVNamespace;
   SUMMON_CACHE: KVNamespace;
