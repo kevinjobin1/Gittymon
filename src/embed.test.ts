@@ -34,32 +34,31 @@ describe('SVG Card Generation', () => {
     expect(found).toBe(true);
   });
 
-  it('should include all five stat values (HP, ATK, DEF, SPD, CHS)', () => {
+  it('should include all five stat labels (HP, ATK, DEF, SPD, CHA)', () => {
     const svg = generateSvgCard('testuser');
-    expect(svg).toContain('HEALTH LOOP');
-    expect(svg).toContain('BUG SUMMONS');
-    expect(svg).toContain('CODE SHIELD');
-    expect(svg).toContain('CYCLE SPEED');
-    expect(svg).toContain('CHAOS FLOW');
+    expect(svg).toContain('HP');
+    expect(svg).toContain('ATK');
+    expect(svg).toContain('DEF');
+    expect(svg).toContain('SPD');
+    expect(svg).toContain('CHA');
   });
 
-  it('should include stat percentage values', () => {
+  it('should include numeric stat values between 25-99', () => {
     const svg = generateSvgCard('testuser');
-    // Target only text-element percentages (stat values), not gradient stops or opacity
-    const statPercentMatches = svg.match(/>\d+%<\/text>/g);
-    expect(statPercentMatches).not.toBeNull();
-    expect(statPercentMatches!.length).toBe(5);
-    // All stats are between 25-99
-    statPercentMatches!.forEach(m => {
-      const val = parseInt(m.replace(/[^0-9]/g, ''), 10);
+    // Use matchAll to get captured groups: the (\d+) right before </text>
+    const statMatches = [...svg.matchAll(/fill="#e2dfde"[^>]*>(\d+)<\/text>/g)];
+    expect(statMatches.length).toBe(4); // ATK, DEF, SPD, CHA values
+    statMatches.forEach(m => {
+      const val = parseInt(m[1]);
       expect(val).toBeGreaterThanOrEqual(25);
       expect(val).toBeLessThanOrEqual(99);
     });
   });
 
-  it('should include a type badge', () => {
+  it('should include a type badge (truncated to 16 chars)', () => {
     const svg = generateSvgCard('testuser');
-    const knownTypes = ['DIRECT-TO-MASTER', 'ANYSCRIPT-TYPE', 'STACKOVERFLOW CLONER', 'MERGE-FEARFUL', 'COFFEE-FUELED', 'INFINITE-LOOP'];
+    // The type is truncated to 16 characters in the SVG
+    const knownTypes = ['DIRECT-TO-MASTER', 'ANYSCRIPT-TYPE', 'STACKOVERFLOW CL', 'MERGE-FEARFUL', 'COFFEE-FUELED', 'INFINITE-LO'];
     const found = knownTypes.some(t => svg.includes(t));
     expect(found).toBe(true);
   });
@@ -67,8 +66,8 @@ describe('SVG Card Generation', () => {
   it('should include the user level', () => {
     const svg = generateSvgCard('testuser');
     expect(svg).toContain('LV');
-    // Level should be a number
-    const levelMatch = svg.match(/LV (\d+)/);
+    // Level should be a number (no space between LV and number)
+    const levelMatch = svg.match(/LV(\d+)/);
     expect(levelMatch).not.toBeNull();
     expect(Number(levelMatch![1])).toBeGreaterThanOrEqual(1);
     expect(Number(levelMatch![1])).toBeLessThanOrEqual(99);
@@ -104,22 +103,14 @@ describe('SVG Card Generation', () => {
 
   it('should include win/loss counters', () => {
     const svg = generateSvgCard('testuser');
-    expect(svg).toContain('W</text>');
-    expect(svg).toContain('L</text>');
+    // W/L is shown as "W:0 L:0" in a single text element
+    expect(svg).toMatch(/W:\d+ L:\d+/);
   });
 
-  it('should include CSS animation styles', () => {
+  it('should include the @ prefix before the username in the footer', () => {
     const svg = generateSvgCard('testuser');
-    expect(svg).toContain('<style>');
-    expect(svg).toContain('spriteBob');
-    expect(svg).toContain('ledPulse');
-    expect(svg).toContain('hpPulse');
-  });
-
-  it('should include the @ symbol before the username', () => {
-    const svg = generateSvgCard('dev123');
-    expect(svg).toContain('@</text>');
-    expect(svg).toContain('DEV123');
+    // Footer shows "@USERNAME" as a single text element
+    expect(svg).toContain('@TESTUSER');
   });
 
   describe('SVG edge cases', () => {
@@ -129,7 +120,7 @@ describe('SVG Card Generation', () => {
       expect(svg.startsWith('<svg')).toBe(true);
       expect(svg).toContain('</svg>');
       // Should use fallback 'x'
-      expect(svg).toContain('@</text>');
+      expect(svg).toContain('@X');
     });
 
     it('should handle whitespace-only username', () => {

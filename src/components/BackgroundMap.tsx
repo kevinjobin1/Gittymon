@@ -170,6 +170,10 @@ const getTypeLabel = (type: string) => {
   return map[type] || "Gittymon";
 };
 
+interface BackgroundMapProps {
+  isExpanded?: boolean;
+}
+
 interface LogMessage {
   id: string;
   name: string;
@@ -178,13 +182,19 @@ interface LogMessage {
   timestamp: string;
 }
 
-export function BackgroundMap() {
+export function BackgroundMap({ isExpanded = false }: BackgroundMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [windowSize, setWindowSize] = useState({ width: 800, height: 600 });
   const [logs, setLogs] = useState<LogMessage[]>([]);
   const [mapFocused, setMapFocused] = useState(false);
   const GittymonsRef = useRef<Gittymon[]>([]);
   const particlesRef = useRef<CosmicParticle[]>([]);
+
+  // Parallax offset — subtly drifts the background when console is expanded
+  const parallaxRef = useRef({ x: 0, y: 0 });
+  const gridOffsetRef = useRef({ x: 0, y: 0 });
+  const expandedRef = useRef(isExpanded);
+  expandedRef.current = isExpanded;
 
   // Ref to track mouse position directly in canvas event loop avoiding trigger rerender
   const mouseRef = useRef({
@@ -578,25 +588,42 @@ export function BackgroundMap() {
       const Gittymons = GittymonsRef.current;
       const particles = particlesRef.current;
       const m = mouseRef.current;
+      const p = parallaxRef.current;
 
       m.idleTicks++;
+
+      // Subtle parallax drift when expanded — slowly oscillate grid offset
+      if (expandedRef.current) {
+        const t = Date.now() / 4000;
+        p.x = Math.sin(t * 0.7) * 12;
+        p.y = Math.cos(t * 0.5) * 8;
+        // Accumulate for grid drift
+        gridOffsetRef.current.x += (p.x - gridOffsetRef.current.x) * 0.02;
+        gridOffsetRef.current.y += (p.y - gridOffsetRef.current.y) * 0.02;
+      } else {
+        // Smoothly return to center
+        gridOffsetRef.current.x *= 0.96;
+        gridOffsetRef.current.y *= 0.96;
+      }
 
       // 1. CLEAR & DRAW COSMIC GRID BACKGROUND
       ctx.fillStyle = "#0a0d16"; // Dark sci-fi cosmic void / grid blueprint
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Draw dynamic subtle blue graph-paper grid lines
+      // Draw dynamic subtle blue graph-paper grid lines with parallax offset
       const gridSize = 64;
       ctx.strokeStyle = "rgba(56, 189, 248, 0.05)";
       ctx.lineWidth = 1;
 
-      for (let x = 0; x < canvas.width; x += gridSize) {
+      const gx = gridOffsetRef.current.x;
+      const gy = gridOffsetRef.current.y;
+      for (let x = -gridSize + (gx % gridSize); x < canvas.width + gridSize; x += gridSize) {
         ctx.beginPath();
         ctx.moveTo(x, 0);
         ctx.lineTo(x, canvas.height);
         ctx.stroke();
       }
-      for (let y = 0; y < canvas.height; y += gridSize) {
+      for (let y = -gridSize + (gy % gridSize); y < canvas.height + gridSize; y += gridSize) {
         ctx.beginPath();
         ctx.moveTo(0, y);
         ctx.lineTo(canvas.width, y);
@@ -891,7 +918,12 @@ export function BackgroundMap() {
         height={windowSize.height}
         style={{
           imageRendering: "pixelated",
-          filter: mapFocused ? "none" : "blur(1.5px) opacity(0.85)",
+          transform: isExpanded ? 'scale(0.92) translateY(-8px)' : 'scale(1) translateY(0)',
+          filter: mapFocused
+            ? 'none'
+            : isExpanded
+              ? 'blur(3px) opacity(0.6) brightness(0.7)'
+              : 'blur(1.5px) opacity(0.85)',
         }}
       />
 

@@ -1,78 +1,4 @@
-import { getSeedHash, LCG } from './procGen';
-
-// Build the 24x24 procedural sprite grid (mirrored, outlined)
-function buildSpriteGrid(seed: string): number[][] {
-  const hash = getSeedHash(seed);
-  const lcg = new LCG(hash);
-
-  const grid: number[][] = Array.from({ length: 24 }, () => Array(24).fill(0));
-  const limbsType = lcg.nextRange(0, 3);
-  const eyesType = lcg.nextRange(0, 3);
-  const hornsType = lcg.nextRange(0, 4);
-
-  for (let y = 4; y < 20; y++) {
-    for (let x = 3; x < 12; x++) {
-      let fill = 0;
-      if (x <= 11 && x >= 11 - Math.floor(lcg.next() * 5 + 3)) {
-        if (y >= 7 && y <= 16) fill = lcg.next() > 0.35 ? 2 : 3;
-      }
-      if (hornsType === 0 && y >= 4 && y <= 6 && x >= 8 && x < 11) fill = 2;
-      else if (hornsType === 1 && y === 5 && x >= 5 && x <= 8) fill = 3;
-      else if (hornsType === 2 && y >= 3 && y <= 5 && x === 10) fill = 3;
-      if (limbsType === 0 && y >= 11 && y <= 13 && x >= 3 && x <= 6) fill = 2;
-      else if (limbsType === 1 && y >= 14 && y <= 15 && x >= 2 && x <= 5) fill = 3;
-      if (y >= 17 && y <= 18 && x >= 6 && x <= 10) fill = 2;
-      grid[y][x] = fill;
-    }
-  }
-
-  if (eyesType === 0) { grid[9][8] = 3; grid[10][8] = 0; grid[9][9] = 3; }
-  else if (eyesType === 1) { grid[9][7] = 3; grid[9][8] = 3; grid[9][9] = 3; }
-  else { grid[8][7] = 3; grid[9][8] = 3; grid[9][9] = 3; }
-
-  grid[12][10] = 0;
-  grid[13][11] = 2;
-
-  // Mirror
-  for (let y = 0; y < 24; y++)
-    for (let x = 0; x < 12; x++)
-      grid[y][23 - x] = grid[y][x];
-
-  // Outline
-  const final: number[][] = Array.from({ length: 24 }, () => Array(24).fill(0));
-  for (let y = 0; y < 24; y++) {
-    for (let x = 0; x < 24; x++) {
-      if (grid[y][x] > 0) { final[y][x] = grid[y][x]; continue; }
-      for (const [ny, nx] of [[y - 1, x], [y + 1, x], [y, x - 1], [y, x + 1]]) {
-        if (ny >= 0 && ny < 24 && nx >= 0 && nx < 24 && grid[ny][nx] > 0) {
-          final[y][x] = 1; break;
-        }
-      }
-    }
-  }
-  return final;
-}
-
-function drawSpriteOnCanvas(
-  ctx: CanvasRenderingContext2D,
-  grid: number[][],
-  ox: number,
-  oy: number,
-  pixelSize: number,
-  bounceOffset: number = 0
-) {
-  const colors = ['#1a1a1a', '#1a1a1a', '#7f001c', '#e2dfde'];
-  ctx.imageSmoothingEnabled = false;
-  for (let y = 0; y < 24; y++) {
-    for (let x = 0; x < 24; x++) {
-      const cell = grid[y][x];
-      if (cell === 0) continue;
-      const dy = y < 17 ? bounceOffset : 0;
-      ctx.fillStyle = colors[cell] || '#1a1a1a';
-      ctx.fillRect(ox + x * pixelSize, oy + y * pixelSize + dy, pixelSize, pixelSize);
-    }
-  }
-}
+import { buildSpriteGrid, drawSpriteOnCanvas } from './procGen';
 
 // Wrap text at a character limit
 function wrapText(text: string, maxLen: number): string[] {
@@ -99,7 +25,10 @@ export interface CardData {
   losses?: number;
 }
 
-// Draw full animated frame onto a canvas
+/**
+ * Draw a Pokémon TCG-inspired card on a 460×220 canvas.
+ * Clean layout — big artwork, bold text, minimal clutter.
+ */
 export function drawCardFrame(
   canvas: HTMLCanvasElement,
   data: CardData,
@@ -108,208 +37,190 @@ export function drawCardFrame(
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
-  const W = canvas.width;   // 460
-  const H = canvas.height;  // 220
+  const W = 460;
+  const H = 220;
   ctx.clearRect(0, 0, W, H);
 
   // ── Background ──
-  ctx.fillStyle = '#0a0d16';
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+  bgGrad.addColorStop(0, '#0f172a');
+  bgGrad.addColorStop(0.5, '#0a0d16');
+  bgGrad.addColorStop(1, '#05080f');
+  ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, W, H);
 
-  // Subtle grid pattern
-  ctx.fillStyle = '#0f172a';
-  for (let gx = 0; gx < W; gx += 8)
-    for (let gy = 0; gy < H; gy += 8)
-      if ((gx + gy) % 16 === 0) ctx.fillRect(gx, gy, 2, 2);
+  // Subtle card shine (top highlight)
+  const shineGrad = ctx.createRadialGradient(W / 2, 40, 10, W / 2, 40, 220);
+  shineGrad.addColorStop(0, 'rgba(255,255,255,0.04)');
+  shineGrad.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = shineGrad;
+  ctx.fillRect(0, 0, W, H);
 
-  // ── Outer Frame ──
-  ctx.fillStyle = '#18181b';
-  ctx.roundRect(4, 4, W - 8, H - 8, 14);
-  ctx.fill();
-  ctx.strokeStyle = '#1a1a1a';
-  ctx.lineWidth = 3;
-  ctx.roundRect(4, 4, W - 8, H - 8, 14);
-  ctx.stroke();
-
-  // Inner crimson dashed accent
-  ctx.strokeStyle = '#7f001c';
-  ctx.lineWidth = 1;
-  ctx.setLineDash([3, 4]);
-  ctx.globalAlpha = 0.5;
-  ctx.roundRect(8, 8, W - 16, H - 16, 10);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.globalAlpha = 1;
-
-  // ── Left LCD Bezel ──
-  const bezelGrad = ctx.createLinearGradient(0, 18, 0, 206);
-  bezelGrad.addColorStop(0, '#3f3f46');
-  bezelGrad.addColorStop(1, '#18181b');
-  ctx.fillStyle = bezelGrad;
-  ctx.roundRect(16, 16, 112, 188, 6);
-  ctx.fill();
-  ctx.strokeStyle = '#1a1a1a';
-  ctx.lineWidth = 1.5;
-  ctx.roundRect(16, 16, 112, 188, 6);
-  ctx.stroke();
-
-  // ── LCD Screen ──
-  const screenGrad = ctx.createLinearGradient(0, 22, 0, 140);
-  screenGrad.addColorStop(0, '#c5cbb4');
-  screenGrad.addColorStop(1, '#adb596');
-  ctx.fillStyle = screenGrad;
-  ctx.fillRect(22, 22, 100, 115);
-  ctx.strokeStyle = '#1a1a1a';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(22, 22, 100, 115);
-
-  // Scanlines on LCD
-  ctx.strokeStyle = '#1a1a1a';
-  ctx.globalAlpha = 0.04;
-  for (let sy = 22; sy < 137; sy += 3) {
-    ctx.beginPath();
-    ctx.moveTo(22, sy);
-    ctx.lineTo(122, sy);
-    ctx.stroke();
-  }
-  ctx.globalAlpha = 1;
-
-  // ── Procedural Sprite ──
-  const spriteGrid = buildSpriteGrid(data.spriteSeed);
-  const bounceOffsets = [0, -1, -2, -3, -2, -1, 0, -1, -2, -1];
-  const bounce = bounceOffsets[frame % bounceOffsets.length];
-  drawSpriteOnCanvas(ctx, spriteGrid, 48, 32, 2, bounce);
-
-  // ── Battery LED ──
-  ctx.fillStyle = frame % 4 < 2 ? '#fca5a5' : '#ef4444';
+  // ── Card Border ──
+  ctx.strokeStyle = '#27272a';
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.arc(32, 160, 3, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.roundRect(3, 3, W - 6, H - 6, 10);
+  ctx.stroke();
 
-  // ── Bottom Screen Label ──
-  ctx.fillStyle = '#1a1a1a';
-  ctx.fillRect(22, 142, 100, 46);
+  // Colored top accent bar (signature crimson)
+  ctx.fillStyle = '#7f001c';
+  ctx.fillRect(4, 4, W - 8, 3);
 
+  // ── Top Strip: Name + Level + HP ──
+  // Name (left, big)
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 11px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText(`LV ${data.level}`, 72, 157);
+  ctx.font = 'bold 18px monospace';
+  ctx.textAlign = 'left';
+  const displayName = data.monName.length > 16 ? data.monName.slice(0, 16) : data.monName;
+  ctx.fillText(displayName.toUpperCase(), 16, 24);
+
+  // Level + HP badge group (right)
+  ctx.fillStyle = '#1a1a1a';
+  ctx.beginPath();
+  ctx.roundRect(W - 120, 8, 108, 18, 5);
+  ctx.fill();
 
   ctx.fillStyle = '#e2dfde';
-  ctx.font = '8px monospace';
-  ctx.fillText('GITTYMON PROFILE', 72, 170);
+  ctx.font = 'bold 11px monospace';
+  ctx.textAlign = 'center';
 
-  ctx.fillStyle = '#7f001c';
+  // HP text with heart
+  ctx.fillStyle = '#ef4444';
+  ctx.font = 'bold 11px monospace';
+  ctx.fillText('♥', W - 112, 22);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(`${data.stats.hp}`, W - 98, 22);
+
+  // Separator
+  ctx.fillStyle = '#52525b';
+  ctx.fillText('|', W - 76, 22);
+
+  // Level
+  ctx.fillStyle = '#e2dfde';
+  ctx.font = 'bold 11px monospace';
+  ctx.fillText(`LV${data.level}`, W - 58, 22);
+
+  // ── Separator line ──
+  ctx.strokeStyle = '#1e293b';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(12, 34);
+  ctx.lineTo(448, 34);
+  ctx.stroke();
+
+  // ── Sprite (big, centered) ──
+  // Artwork panel — light enough that dark sprite outlines are clearly visible
+  ctx.fillStyle = '#475569';
+  ctx.beginPath();
+  ctx.roundRect(140, 34, 180, 108, 8);
+  ctx.fill();
+
+  const spriteResult = buildSpriteGrid(data.spriteSeed, frame);
+  const spriteSize = 24 * 4; // pixelSize=4 → 96px
+  const spriteX = Math.floor((W - spriteSize) / 2);
+  const spriteY = 40;
+  drawSpriteOnCanvas(ctx, spriteResult, spriteX, spriteY, 4, frame);
+
+  // ── Type Badge (below sprite) ──
+  const trimmedType = data.type.length > 16 ? data.type.slice(0, 16) : data.type;
+  const typeLabel = trimmedType.toUpperCase();
   ctx.font = 'bold 7px monospace';
-  ctx.fillText('CHAOS NETWORK', 72, 182);
+  const typeW = ctx.measureText(typeLabel).width + 16;
+  const typeX = W / 2 - typeW / 2;
 
-  // ── Right Side: Username Bar ──
-  ctx.textAlign = 'start';
-  ctx.fillStyle = '#1a1a1a';
-  ctx.roundRect(140, 16, 304, 24, 5);
+  ctx.fillStyle = 'rgba(127, 0, 28, 0.15)';
+  ctx.beginPath();
+  ctx.roundRect(typeX, 142, typeW, 14, 7);
+  ctx.fill();
+  ctx.strokeStyle = '#7f001c';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  ctx.roundRect(typeX, 142, typeW, 14, 7);
+  ctx.stroke();
+  ctx.fillStyle = '#7f001c';
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 7px monospace';
+  ctx.fillText(typeLabel, W / 2, 153);
+
+  // ── Stats Row ──
+  const statsY = 164;
+
+  // HP bar
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#a1a1aa';
+  ctx.font = 'bold 7px monospace';
+  ctx.fillText('HP', 16, statsY + 6);
+
+  ctx.fillStyle = '#27272a';
+  ctx.beginPath();
+  ctx.roundRect(34, statsY, 80, 10, 4);
+  ctx.fill();
+  const hpPct = Math.min(100, data.stats.hp) / 100;
+  ctx.fillStyle = hpPct > 0.5 ? '#22c55e' : hpPct > 0.25 ? '#eab308' : '#ef4444';
+  ctx.beginPath();
+  ctx.roundRect(34, statsY, Math.max(4, Math.floor(80 * hpPct)), 10, 4);
   ctx.fill();
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 11px monospace';
-  ctx.fillText(`@${data.username.toUpperCase()}`, 150, 33);
-
-  ctx.fillStyle = '#7f001c';
-  ctx.font = 'bold 9px monospace';
-  ctx.textAlign = 'end';
-  ctx.fillText(`W:${data.wins ?? 0} L:${data.losses ?? 0}`, 440, 33);
-  ctx.textAlign = 'start';
-
-  // ── Monster Name + Type ──
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 14px monospace';
-  ctx.fillText(data.monName.toUpperCase(), 148, 56);
-
-  // Type badge
-  const trimmedType = data.type.length > 14 ? data.type.slice(0, 14) : data.type;
-  ctx.strokeStyle = '#7f001c';
-  ctx.lineWidth = 1;
-  ctx.roundRect(335, 46, 109, 14, 20);
-  ctx.stroke();
-  ctx.fillStyle = '#7f001c';
   ctx.font = 'bold 7px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText(trimmedType.toUpperCase(), 390, 56);
-  ctx.textAlign = 'start';
+  ctx.textAlign = 'left';
+  ctx.fillText(`${data.stats.hp}`, 40, statsY + 8);
 
-  // ── Separator ──
-  ctx.strokeStyle = '#334155';
-  ctx.globalAlpha = 0.3;
-  ctx.lineWidth = 1;
-  ctx.setLineDash([3, 4]);
-  ctx.beginPath();
-  ctx.moveTo(140, 63);
-  ctx.lineTo(444, 63);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.globalAlpha = 1;
-
-  // ── Stats Bars ──
-  const stats = [
-    { label: 'HEALTH LOOP', val: data.stats.hp, color: '#7f001c' },
-    { label: 'BUG SUMMONS', val: data.stats.attack, color: '#e2dfde' },
-    { label: 'CODE SHIELD', val: data.stats.defense, color: '#ffffff' },
-    { label: 'CYCLE SPEED', val: data.stats.speed, color: '#4b5563' },
-    { label: 'CHAOS FLOW', val: data.stats.chaos, color: '#b91c1c' },
+  // ATK / DEF / SPD compact
+  const statLabels = [
+    { label: 'ATK', val: data.stats.attack, x: 140 },
+    { label: 'DEF', val: data.stats.defense, x: 210 },
+    { label: 'SPD', val: data.stats.speed, x: 280 },
+    { label: 'CHA', val: data.stats.chaos, x: 350 },
   ];
 
-  stats.forEach((st, i) => {
-    const rowY = 74 + i * 13;
-    ctx.fillStyle = '#a1a1aa';
+  statLabels.forEach((s) => {
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#71717a';
+    ctx.font = 'bold 6.5px monospace';
+    ctx.fillText(s.label, s.x, statsY + 6);
+    ctx.fillStyle = '#e2dfde';
     ctx.font = 'bold 8px monospace';
-    ctx.fillText(st.label, 142, rowY);
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 8px monospace';
-    ctx.textAlign = 'end';
-    ctx.fillText(`${st.val}%`, 212, rowY);
-    ctx.textAlign = 'start';
-
-    // Bar background
-    ctx.fillStyle = '#27272a';
-    ctx.roundRect(218, rowY - 6, 226, 9, 3);
-    ctx.fill();
-
-    // Bar fill
-    ctx.fillStyle = st.color;
-    const barW = Math.max(4, Math.floor((st.val / 100) * 226));
-    ctx.roundRect(218, rowY - 6, barW, 9, 3);
-    ctx.fill();
+    ctx.fillText(`${s.val}`, s.x + 26, statsY + 6);
   });
 
-  // ── Dialogue / Roast Box ──
-  ctx.fillStyle = '#f1f5f9';
-  ctx.roundRect(140, 142, 304, 40, 5);
+  // W/L record (right edge)
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#52525b';
+  ctx.font = 'bold 7px monospace';
+  ctx.fillText(`W:${data.wins ?? 0} L:${data.losses ?? 0}`, 444, statsY + 6);
+
+  // ── Roast / Description Box ──
+  ctx.fillStyle = '#1e1e24';
+  ctx.beginPath();
+  ctx.roundRect(16, 180, 428, 24, 4);
   ctx.fill();
-  ctx.strokeStyle = '#1a1a1a';
-  ctx.lineWidth = 1;
-  ctx.roundRect(140, 142, 304, 40, 5);
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  ctx.roundRect(16, 180, 428, 24, 4);
   ctx.stroke();
 
-  // Roast text with typewriter effect
-  const roastLines = wrapText(data.roast.toUpperCase(), 35).slice(0, 3);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#a1a1aa';
+  ctx.font = 'italic 7.5px monospace';
+  const roastLines = wrapText(data.roast.toUpperCase(), 48).slice(0, 2);
   roastLines.forEach((line, i) => {
-    ctx.fillStyle = '#7f001c';
-    ctx.font = 'bold 8px monospace';
-    ctx.fillText(line, 148, 158 + i * 11);
+    ctx.fillText(line, W / 2, 194 + i * 8);
   });
 
   // ── Footer ──
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#52525b';
+  ctx.font = 'bold 6.5px monospace';
+  ctx.fillText(`@${data.username.toUpperCase()}`, 16, 214);
+
+  ctx.textAlign = 'right';
   ctx.fillStyle = '#7f001c';
   ctx.font = 'bold 7px monospace';
-  ctx.fillText('● GITTYMON-STER', 142, 208);
-
-  ctx.fillStyle = '#cbd5e1';
-  ctx.globalAlpha = 0.4;
-  ctx.font = 'bold 7px monospace';
-  ctx.textAlign = 'end';
-  ctx.fillText('SUMMONED AT GITHUB.COM/KEVINJOBIN1/GITTYMON', 442, 208);
-  ctx.textAlign = 'start';
-  ctx.globalAlpha = 1;
+  ctx.fillText('⚡ GITTYMON', 444, 214);
+  ctx.textAlign = 'left';
 }
 
 // Render a static card (frame 0) and return the canvas
@@ -320,8 +231,6 @@ export function renderStaticCard(data: CardData): HTMLCanvasElement {
   drawCardFrame(canvas, data, 0);
   return canvas;
 }
-
-
 
 // Download a canvas as PNG
 export function downloadCardAsPng(data: CardData, filename?: string) {
@@ -337,6 +246,120 @@ export function downloadCardAsPng(data: CardData, filename?: string) {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }, 'image/png');
+}
+
+/**
+ * Generate a full inline SVG string of the card from CardData.
+ * Matches the TCG-inspired canvas design — same layout, colors, sparkles.
+ */
+export function generateCardSvg(data: CardData): string {
+  const W = 460;
+  const H = 220;
+
+  const spriteResult = buildSpriteGrid(data.spriteSeed, 0);
+  const [outlineColor, bodyColor, lightColor, accentColor] = spriteResult.palette;
+  const paletteColors = spriteResult.palette;
+  const grid = spriteResult.grid;
+
+  // ── Generate sprite rects ──
+  let spriteRects = '';
+  for (let y = 0; y < 24; y++) {
+    for (let x = 0; x < 24; x++) {
+      const cell = grid[y][x];
+      if (cell === 0) continue;
+      const color = cell === 1 ? paletteColors[0]
+        : cell === 2 ? paletteColors[1]
+        : cell === 3 ? paletteColors[2]
+        : cell === 4 ? paletteColors[3]
+        : cell === 5 ? '#ffffff' : paletteColors[0];
+      spriteRects += `<rect x="${x * 4}" y="${y * 4}" width="4" height="4" fill="${color}" />\n`;
+    }
+  }
+
+  // ── Roast lines ──
+  const roastLines = wrapText(data.roast.toUpperCase(), 48).slice(0, 2);
+  let roastSvg = '';
+  roastLines.forEach((line, i) => {
+    roastSvg += `<text x="230" y="${194 + i * 8}" fill="#a1a1aa" font-family="monospace" font-size="7.5" font-style="italic" text-anchor="middle">${escapeXml(line)}</text>\n`;
+  });
+
+  // ── Type label ──
+  const trimmedType = data.type.length > 16 ? data.type.slice(0, 16).toUpperCase() : data.type.toUpperCase();
+  const typeW = Math.max(40, trimmedType.length * 4.5 + 16);
+  const typeX = (W - typeW) / 2;
+
+  // ── HP bar color ──
+  const hpPct = Math.min(100, data.stats.hp) / 100;
+  const hpColor = hpPct > 0.5 ? '#22c55e' : hpPct > 0.25 ? '#eab308' : '#ef4444';
+  const hpW = Math.max(4, Math.floor(80 * hpPct));
+
+  const displayName = data.monName.length > 16 ? data.monName.slice(0, 16) : data.monName;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" fill="none">
+  <defs>
+    <linearGradient id="bgG" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="50%" stop-color="#0a0d16" />
+      <stop offset="100%" stop-color="#05080f" />
+    </linearGradient>
+    <radialGradient id="shineG" cx="50%" cy="18%" r="50%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.04)" />
+      <stop offset="100%" stop-color="rgba(255,255,255,0)" />
+    </radialGradient>
+
+  </defs>
+
+  <rect width="${W}" height="${H}" rx="10" fill="url(#bgG)" />
+  <rect width="${W}" height="${H}" rx="10" fill="url(#shineG)" />
+
+  <rect x="3" y="3" width="${W - 6}" height="${H - 6}" rx="10" stroke="#27272a" stroke-width="2" fill="none" />
+  <rect x="4" y="4" width="${W - 8}" height="3" fill="#7f001c" />
+
+  <text x="16" y="24" fill="#ffffff" font-family="monospace" font-size="18" font-weight="bold">${escapeXml(displayName.toUpperCase())}</text>
+
+  <rect x="${W - 120}" y="8" width="108" height="18" rx="5" fill="#1a1a1a" />
+  <text x="${W - 112}" y="22" fill="#ef4444" font-family="monospace" font-size="11" font-weight="bold">&#9829;</text>
+  <text x="${W - 98}" y="22" fill="#ffffff" font-family="monospace" font-size="11" font-weight="bold">${data.stats.hp}</text>
+  <text x="${W - 76}" y="22" fill="#52525b" font-family="monospace" font-size="11" font-weight="bold">|</text>
+  <text x="${W - 58}" y="22" fill="#e2dfde" font-family="monospace" font-size="11" font-weight="bold">LV${data.level}</text>
+
+  <line x1="12" y1="34" x2="${W - 12}" y2="34" stroke="#1e293b" stroke-width="1" />
+
+  <rect x="140" y="34" width="180" height="108" rx="8" fill="#475569" />
+
+  <g transform="translate(${(W - 96) / 2}, 40)">
+    ${spriteRects}
+  </g>
+
+  <rect x="${typeX}" y="142" width="${typeW}" height="14" rx="7" fill="rgba(127,0,28,0.15)" stroke="#7f001c" stroke-width="0.5" />
+  <text x="${W / 2}" y="153" fill="#7f001c" font-family="monospace" font-size="7" font-weight="bold" text-anchor="middle">${escapeXml(trimmedType)}</text>
+
+  <text x="16" y="170" fill="#a1a1aa" font-family="monospace" font-size="7" font-weight="bold">HP</text>
+  <rect x="34" y="164" width="80" height="10" rx="4" fill="#27272a" />
+  <rect x="34" y="164" width="${hpW}" height="10" rx="4" fill="${hpColor}" />
+  <text x="40" y="172" fill="#ffffff" font-family="monospace" font-size="7" font-weight="bold">${data.stats.hp}</text>
+
+  <text x="140" y="170" fill="#71717a" font-family="monospace" font-size="6.5" font-weight="bold">ATK</text>
+  <text x="166" y="170" fill="#e2dfde" font-family="monospace" font-size="8" font-weight="bold">${data.stats.attack}</text>
+  <text x="210" y="170" fill="#71717a" font-family="monospace" font-size="6.5" font-weight="bold">DEF</text>
+  <text x="236" y="170" fill="#e2dfde" font-family="monospace" font-size="8" font-weight="bold">${data.stats.defense}</text>
+  <text x="280" y="170" fill="#71717a" font-family="monospace" font-size="6.5" font-weight="bold">SPD</text>
+  <text x="306" y="170" fill="#e2dfde" font-family="monospace" font-size="8" font-weight="bold">${data.stats.speed}</text>
+  <text x="350" y="170" fill="#71717a" font-family="monospace" font-size="6.5" font-weight="bold">CHA</text>
+  <text x="376" y="170" fill="#e2dfde" font-family="monospace" font-size="8" font-weight="bold">${data.stats.chaos}</text>
+
+  <text x="${W - 16}" y="170" fill="#52525b" font-family="monospace" font-size="7" font-weight="bold" text-anchor="end">W:${data.wins ?? 0} L:${data.losses ?? 0}</text>
+
+  <rect x="16" y="180" width="${W - 32}" height="24" rx="4" fill="#1e1e24" stroke="#334155" stroke-width="0.5" />
+  ${roastSvg}
+
+  <text x="16" y="214" fill="#52525b" font-family="monospace" font-size="6.5" font-weight="bold">@${escapeXml(data.username.toUpperCase())}</text>
+  <text x="${W - 16}" y="214" fill="#7f001c" font-family="monospace" font-size="7" font-weight="bold" text-anchor="end">&#9889; GITTYMON</text>
+</svg>`;
+}
+
+function escapeXml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 }
 
 // Download from a URL (fetches as blob for reliable cross-browser download)

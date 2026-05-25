@@ -25,107 +25,207 @@ class LCG {
   }
 }
 
-// ======== Procedural Sprite ========
-function getProceduralSpriteSvg(seed: string): string {
+// ======== Full sprite builder matching the client-side buildSpriteGrid ========
+
+const SERVER_PALETTES: Record<string, [string, string, string, string]> = {
+  dmg:    ['#1a1a1a', '#7f001c', '#e2dfde', '#ffffff'],
+  pocket: ['#0f172a', '#475569', '#94a3b8', '#f8fafc'],
+  ember:  ['#1a1a1a', '#dc2626', '#fdba74', '#fef3c7'],
+  frost:  ['#1e293b', '#0284c7', '#7dd3fc', '#f0f9ff'],
+  toxic:  ['#1a1a1a', '#16a34a', '#a3e635', '#f0fdf4'],
+  royal:  ['#1a1a1a', '#7e22ce', '#e9d5ff', '#faf5ff'],
+  neon:   ['#1a1a1a', '#ec4899', '#2dd4bf', '#ffffff'],
+};
+const SERVER_PALETTE_NAMES = Object.keys(SERVER_PALETTES);
+
+interface ServerSpriteResult {
+  grid: number[][];
+  palette: [string, string, string, string];
+}
+
+function buildServerSpriteGrid(seed: string): ServerSpriteResult {
   const hash = getSeedHash(seed);
   const lcg = new LCG(hash);
-  const colors = ['#1a1a1a', '#7f001c', '#e2dfde', '#ffffff'];
-  const grid: number[][] = Array(24).fill(0).map(() => Array(24).fill(0));
-  const limbsType = lcg.nextRange(0, 3);
-  const eyesType = lcg.nextRange(0, 3);
-  const hornsType = lcg.nextRange(0, 4);
+  const paletteName = SERVER_PALETTE_NAMES[lcg.nextRange(0, SERVER_PALETTE_NAMES.length)];
+  const palette = SERVER_PALETTES[paletteName];
 
+  const bodyShape   = lcg.nextRange(0, 5);
+  const limbsType   = lcg.nextRange(0, 4);
+  const eyesType    = lcg.nextRange(0, 6);
+  const hornsType   = lcg.nextRange(0, 5);
+  const tailType    = lcg.nextRange(0, 4);
+  const patternType = lcg.nextRange(0, 4);
+  const mouthType   = lcg.nextRange(0, 3);
+
+  const blinkPeriod = lcg.nextRange(120, 200);
+  const blinkDuration = lcg.nextRange(4, 8);
+  const localFrame = 0 % blinkPeriod;
+  const blinkState = localFrame < blinkDuration
+    ? (localFrame < 2 ? 2 : localFrame < blinkDuration - 2 ? 1 : 0) : 0;
+
+  const grid: number[][] = Array.from({ length: 24 }, () => Array(24).fill(0));
+
+  // 1. CORE BODY
   for (let y = 4; y < 20; y++) {
     for (let x = 3; x < 12; x++) {
-      let fillType = 0;
-      if (x <= 11 && x >= 11 - Math.floor(lcg.next() * 5 + 3)) {
-        if (y >= 7 && y <= 16) fillType = lcg.next() > 0.35 ? 2 : 3;
+      let fill = 0;
+      switch (bodyShape) {
+        case 0:
+          if (x <= 11 && x >= 11 - Math.floor(lcg.next() * 5 + 3) && y >= 7 && y <= 16) {
+            fill = lcg.next() > 0.35 ? 2 : 3;
+          }
+          break;
+        case 1:
+          if (x >= 7 && x <= 11 && y >= 4 && y <= 18) {
+            fill = 2;
+          } else if (y >= 7 && y <= 16 && x >= 5 && x <= 11) {
+            fill = lcg.next() > 0.4 ? 2 : 3;
+          }
+          break;
+        case 2:
+          if (y >= 8 && y <= 15 && x >= 2 && x <= 11) {
+            fill = lcg.next() > 0.35 ? 2 : 3;
+          }
+          break;
+        case 3:
+          if (y >= 5 && y <= 18) {
+            const halfW = Math.floor((18 - Math.abs(11.5 - y)) / 1.8);
+            if (x >= 11 - halfW) fill = lcg.next() > 0.3 ? 2 : 3;
+          }
+          break;
+        case 4:
+          const pearW = y > 12 ? 11 - Math.floor((y - 12) * 0.3) : 8 - Math.floor((12 - y) * 0.4);
+          if (x >= 11 - pearW && y >= 6 && y <= 18) {
+            fill = lcg.next() > 0.35 ? 2 : 3;
+          }
+          break;
       }
-      if (hornsType === 0 && y >= 4 && y <= 6 && x >= 8 && x < 11) fillType = 2;
-      else if (hornsType === 1 && y === 5 && x >= 5 && x <= 8) fillType = 3;
-      else if (hornsType === 2 && y >= 3 && y <= 5 && x === 10) fillType = 3;
-      if (limbsType === 0 && y >= 11 && y <= 13 && x >= 3 && x <= 6) fillType = 2;
-      else if (limbsType === 1 && y >= 14 && y <= 15 && x >= 2 && x <= 5) fillType = 3;
-      if (y >= 17 && y <= 18 && x >= 6 && x <= 10) fillType = 2;
-      grid[y][x] = fillType;
+      grid[y][x] = fill;
     }
   }
-  if (eyesType === 0) { grid[9][8] = 3; grid[10][8] = 0; grid[9][9] = 3; }
-  else if (eyesType === 1) { grid[9][7] = 3; grid[9][8] = 3; grid[9][9] = 3; }
-  else { grid[8][7] = 3; grid[9][8] = 3; grid[9][9] = 3; }
-  grid[12][10] = 0; grid[13][11] = 2;
 
+  // 2. HORNS
+  if (hornsType === 0) {
+    for (let y = 3; y <= 6; y++) {
+      if (y >= 4 && y <= 6) { grid[y][9] = 2; grid[y][10] = 2; }
+      if (y === 3) { grid[3][9] = 3; grid[3][10] = 3; }
+    }
+  } else if (hornsType === 1) {
+    grid[5][5] = 3; grid[5][6] = 3; grid[6][5] = 2;
+  } else if (hornsType === 2) {
+    grid[3][10] = 3; grid[3][11] = 3; grid[4][10] = 3; grid[4][11] = 3;
+    grid[2][10] = 3; grid[2][11] = 3;
+  } else if (hornsType === 3) {
+    grid[4][7] = lcg.next() > 0.5 ? 3 : 2;
+    grid[4][8] = lcg.next() > 0.5 ? 3 : 2;
+    grid[4][9] = lcg.next() > 0.5 ? 3 : 2;
+    grid[4][10] = lcg.next() > 0.5 ? 3 : 2;
+    grid[5][7] = 2; grid[5][10] = 2;
+  }
+
+  // 3. LIMBS
+  if (limbsType === 0) {
+    for (let y = 11; y <= 13; y++) { grid[y][3] = 2; grid[y][4] = 2; }
+  } else if (limbsType === 1) {
+    for (let y = 13; y <= 15; y++) { grid[y][2] = 3; grid[y][3] = 3; }
+    grid[16][2] = 2;
+  } else if (limbsType === 2) {
+    for (let y = 8; y <= 14; y++) {
+      const wingX = y < 11 ? y - 5 : 14 - y + 3;
+      if (wingX >= 1) { grid[y][wingX] = (y % 2 === 0) ? 3 : 2; }
+    }
+    grid[10][2] = 3; grid[10][3] = 3;
+  }
+
+  // 4. FEET
+  for (let y = 17; y <= 18; y++) { grid[y][6] = 2; grid[y][7] = 2; grid[y][9] = 2; grid[y][10] = 2; }
+  grid[18][5] = 3; grid[18][8] = 3; grid[18][11] = 3;
+
+  // 5. EYES
+  const eyeY = eyesType === 4 ? 10 : 9;
+  if (blinkState === 2) {
+    grid[eyeY][8] = 1; grid[eyeY][9] = 1;
+  } else if (blinkState === 1) {
+    grid[eyeY][8] = 1; grid[eyeY][9] = 1;
+    grid[eyeY - 1][8] = 3; grid[eyeY - 1][9] = 3;
+  } else if (eyesType === 0) {
+    grid[eyeY][7] = 3; grid[eyeY + 1][7] = 3;
+    grid[eyeY][8] = 0; grid[eyeY + 1][8] = 3;
+    grid[eyeY][9] = 3; grid[eyeY + 1][9] = 3;
+    grid[eyeY][7] = 0;
+  } else if (eyesType === 1) {
+    grid[eyeY][6] = 3; grid[eyeY][7] = 3; grid[eyeY][8] = 3; grid[eyeY][9] = 3;
+  } else if (eyesType === 2) {
+    grid[8][6] = 3; grid[9][7] = 3; grid[9][8] = 3; grid[9][9] = 3;
+  } else if (eyesType === 3) {
+    grid[eyeY][7] = 3; grid[eyeY][8] = 0; grid[eyeY][9] = 3;
+    grid[eyeY - 1][7] = 3; grid[eyeY - 1][9] = 3;
+  } else if (eyesType === 4) {
+    grid[9][7] = 3; grid[9][8] = 3; grid[9][9] = 3; grid[10][8] = 0;
+  } else if (eyesType === 5) {
+    grid[eyeY][8] = 5; grid[eyeY][9] = 5;
+    grid[eyeY - 1][8] = 5; grid[eyeY - 1][9] = 5;
+  }
+
+  // 6. MOUTH
+  if (mouthType === 0) { grid[12][9] = 0; grid[12][10] = 0; grid[13][10] = 2; }
+  else if (mouthType === 1) { grid[12][9] = 0; grid[12][10] = 0; grid[11][10] = 2; }
+  else { grid[12][9] = 0; grid[12][10] = 0; grid[13][9] = 0; grid[13][10] = 0; }
+
+  // TAIL (on left side BEFORE mirror — mirror will produce the right side)
+  if (tailType === 1) { grid[15][2] = 2; grid[14][1] = 3; grid[15][1] = 2; grid[14][0] = 3; grid[15][0] = 2; }
+  else if (tailType === 2) { grid[14][1] = 2; grid[13][0] = 3; grid[15][1] = 2; grid[16][0] = 3; }
+  else if (tailType === 3) { grid[14][2] = 2; grid[13][1] = 3; grid[14][1] = 3; grid[15][2] = 2; grid[15][1] = 2; grid[14][0] = 3; grid[15][0] = 2; }
+
+  // MIRROR
   for (let y = 0; y < 24; y++)
     for (let x = 0; x < 12; x++)
       grid[y][23 - x] = grid[y][x];
 
-  const finalGrid: number[][] = Array(24).fill(0).map(() => Array(24).fill(0));
+  // OUTLINES
+  const finalGrid: number[][] = Array.from({ length: 24 }, () => Array(24).fill(0));
   for (let y = 0; y < 24; y++) {
     for (let x = 0; x < 24; x++) {
-      const c = grid[y][x];
-      if (c > 0) { finalGrid[y][x] = c; continue; }
-      for (const [ny, nx] of [[y-1,x],[y+1,x],[y,x-1],[y,x+1]]) {
-        if (ny >= 0 && ny < 24 && nx >= 0 && nx < 24 && grid[ny][nx] > 0) {
-          finalGrid[y][x] = 1; break;
+      const cell = grid[y][x];
+      if (cell > 0) { finalGrid[y][x] = cell; }
+      else {
+        for (const [ny, nx] of [[y - 1, x], [y + 1, x], [y, x - 1], [y, x + 1]]) {
+          if (ny >= 0 && ny < 24 && nx >= 0 && nx < 24 && grid[ny][nx] > 0) { finalGrid[y][x] = 1; break; }
         }
       }
     }
   }
+
+  // PATTERNS (left half only, then re-mirror to preserve symmetry)
+  for (let y = 0; y < 24; y++) {
+    for (let x = 0; x < 12; x++) {
+      if (finalGrid[y][x] === 2 && patternType === 1 && (Math.floor(y / 2) % 2 === 0)) finalGrid[y][x] = 4;
+      if (finalGrid[y][x] === 2 && patternType === 2 && (y % 3 === 0 && x % 3 === 0)) finalGrid[y][x] = 4;
+      if (finalGrid[y][x] === 2 && patternType === 3 && ((y + x) % 4 < 2)) finalGrid[y][x] = 3;
+    }
+  }
+  // Re-mirror left half pattern changes to right half
+  for (let y = 0; y < 24; y++) {
+    for (let x = 0; x < 12; x++) {
+      finalGrid[y][23 - x] = finalGrid[y][x];
+    }
+  }
+
+  return { grid: finalGrid, palette };
+}
+
+function getSpriteSvgRects(grid: number[][], palette: [string, string, string, string]): string {
   let rects = '';
   const ps = 4;
   for (let y = 0; y < 24; y++) {
     for (let x = 0; x < 24; x++) {
-      const cell = finalGrid[y][x];
+      const cell = grid[y][x];
       if (cell === 0) continue;
-      const fillColor = cell === 1 ? colors[0] : cell === 2 ? colors[1] : colors[2];
-      rects += `<rect x="${x * ps}" y="${y * ps}" width="${ps}" height="${ps}" fill="${fillColor}" />\n`;
+      const color = cell === 1 ? palette[0] : cell === 2 ? palette[1] : cell === 3 ? palette[2] : cell === 4 ? palette[3] : cell === 5 ? '#ffffff' : palette[0];
+      rects += `<rect x="${x * ps}" y="${y * ps}" width="${ps}" height="${ps}" fill="${color}" />\n`;
     }
   }
   return rects;
-}
-
-function getProceduralGrid24(seed: string): number[][] {
-  const hash = getSeedHash(seed);
-  const lcg = new LCG(hash);
-  const grid: number[][] = Array(24).fill(0).map(() => Array(24).fill(0));
-  const limbsType = lcg.nextRange(0, 3);
-  const eyesType = lcg.nextRange(0, 3);
-  const hornsType = lcg.nextRange(0, 4);
-  for (let y = 4; y < 20; y++) {
-    for (let x = 3; x < 12; x++) {
-      let fillType = 0;
-      if (x <= 11 && x >= 11 - Math.floor(lcg.next() * 5 + 3)) {
-        if (y >= 7 && y <= 16) fillType = lcg.next() > 0.35 ? 2 : 3;
-      }
-      if (hornsType === 0 && y >= 4 && y <= 6 && x >= 8 && x < 11) fillType = 2;
-      else if (hornsType === 1 && y === 5 && x >= 5 && x <= 8) fillType = 3;
-      else if (hornsType === 2 && y >= 3 && y <= 5 && x === 10) fillType = 3;
-      if (limbsType === 0 && y >= 11 && y <= 13 && x >= 3 && x <= 6) fillType = 2;
-      else if (limbsType === 1 && y >= 14 && y <= 15 && x >= 2 && x <= 5) fillType = 3;
-      if (y >= 17 && y <= 18 && x >= 6 && x <= 10) fillType = 2;
-      grid[y][x] = fillType;
-    }
-  }
-  if (eyesType === 0) { grid[9][8] = 3; grid[10][8] = 0; grid[9][9] = 3; }
-  else if (eyesType === 1) { grid[9][7] = 3; grid[9][8] = 3; grid[9][9] = 3; }
-  else { grid[8][7] = 3; grid[9][8] = 3; grid[9][9] = 3; }
-  grid[12][10] = 0; grid[13][11] = 2;
-  for (let y = 0; y < 24; y++)
-    for (let x = 0; x < 12; x++)
-      grid[y][23 - x] = grid[y][x];
-  const finalGrid: number[][] = Array(24).fill(0).map(() => Array(24).fill(0));
-  for (let y = 0; y < 24; y++) {
-    for (let x = 0; x < 24; x++) {
-      const c = grid[y][x];
-      if (c > 0) { finalGrid[y][x] = c; continue; }
-      for (const [ny, nx] of [[y-1,x],[y+1,x],[y,x-1],[y,x+1]]) {
-        if (ny >= 0 && ny < 24 && nx >= 0 && nx < 24 && grid[ny][nx] > 0) {
-          finalGrid[y][x] = 1; break;
-        }
-      }
-    }
-  }
-  return finalGrid;
 }
 
 function wrapText(text: string, maxLen: number): string[] {
@@ -140,7 +240,7 @@ function wrapText(text: string, maxLen: number): string[] {
   return lines;
 }
 
-// ======== SVG Card Generator ========
+// ======== SVG Card Generator (Pokémon TCG Layout) ========
 export async function generateSvgCard(username: string, env: Env): Promise<string> {
   const cleanUsername = (username.trim().replace(/[^a-zA-Z0-9-]/g, '')) || 'x';
   const leaderboard = await loadLeaderboard(env.LEADERBOARD);
@@ -173,130 +273,100 @@ export async function generateSvgCard(username: string, env: Env): Promise<strin
   ];
   const roast = roasts[codeHash % roasts.length];
   const spriteSeed = `${cleanUsername}-${joinedYear}-${publicRepos}`;
-  const spriteSvgRects = getProceduralSpriteSvg(spriteSeed);
+  const spriteResult = buildServerSpriteGrid(spriteSeed);
+  const spriteSvgRects = getSpriteSvgRects(spriteResult.grid, spriteResult.palette);
   const W = 460, H = 220;
-  const roastLines = wrapText(roast.toUpperCase(), 35).slice(0, 3);
+
+  const roastLines = wrapText(roast.toUpperCase(), 48).slice(0, 2);
   let roastSvg = '';
   roastLines.forEach((line, i) => {
-    roastSvg += `<text x="150" y="${159 + i * 11}" fill="#7f001c" font-family="monospace" font-size="7.5" font-weight="900">${line}</text>\n`;
+    roastSvg += `<text x="230" y="${194 + i * 8}" fill="#a1a1aa" font-family="monospace" font-size="7.5" font-style="italic" text-anchor="middle">${line}</text>\n`;
   });
+
+  const typeLabel = type.length > 16 ? type.slice(0, 16).toUpperCase() : type.toUpperCase();
+  const typeW = Math.max(40, typeLabel.length * 4.5 + 16);
+  const typeX = (W - typeW) / 2;
+  const hpColor = hp > 50 ? '#22c55e' : hp > 25 ? '#eab308' : '#ef4444';
+  const hpW = Math.max(4, Math.floor(80 * (Math.min(100, hp) / 100)));
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" fill="none">
   <defs>
-    <radialGradient id="bgGlow" cx="50%" cy="50%" r="70%">
-      <stop offset="0%" stop-color="#1e1b2e" /><stop offset="60%" stop-color="#0f0f1a" /><stop offset="100%" stop-color="#07070d" />
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="50%" stop-color="#0a0d16" />
+      <stop offset="100%" stop-color="#05080f" />
+    </linearGradient>
+    <radialGradient id="cardShine" cx="50%" cy="18%" r="50%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.04)" />
+      <stop offset="100%" stop-color="rgba(255,255,255,0)" />
     </radialGradient>
-    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#27272a" /><stop offset="100%" stop-color="#18181b" />
-    </linearGradient>
-    <linearGradient id="bezelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#52525b" /><stop offset="40%" stop-color="#3f3f46" /><stop offset="100%" stop-color="#18181b" />
-    </linearGradient>
-    <linearGradient id="screenGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#d4dbb8" /><stop offset="50%" stop-color="#c5cbb4" /><stop offset="100%" stop-color="#a3ad8e" />
-    </linearGradient>
-    <linearGradient id="screenGlare" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.18" /><stop offset="40%" stop-color="#ffffff" stop-opacity="0.06" /><stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
-    </linearGradient>
-    <pattern id="scanlines" width="4" height="4" patternUnits="userSpaceOnUse">
-      <line x1="0" y1="0" x2="4" y2="0" stroke="#000" stroke-width="1" opacity="0.07" />
-    </pattern>
-    <linearGradient id="hpGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#991b1b" /><stop offset="50%" stop-color="#dc2626" /><stop offset="100%" stop-color="#7f001c" />
-    </linearGradient>
-    <linearGradient id="atkGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#a1a1aa" /><stop offset="100%" stop-color="#e2dfde" />
-    </linearGradient>
-    <linearGradient id="defGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#d4d4d8" /><stop offset="100%" stop-color="#ffffff" />
-    </linearGradient>
-    <linearGradient id="spdGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#334155" /><stop offset="100%" stop-color="#64748b" />
-    </linearGradient>
-    <linearGradient id="chaosGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#7f1d1d" /><stop offset="50%" stop-color="#b91c1c" /><stop offset="100%" stop-color="#dc2626" />
-    </linearGradient>
-    <linearGradient id="barShine" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.25" /><stop offset="40%" stop-color="#ffffff" stop-opacity="0" /><stop offset="100%" stop-color="#000000" stop-opacity="0.15" />
-    </linearGradient>
-    <filter id="glow"><feGaussianBlur stdDeviation="1.5" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
-    <filter id="ledGlow"><feGaussianBlur stdDeviation="2" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
-    <style>
-      @keyframes spriteBob { 0% { transform: translateY(0px); } 50% { transform: translateY(-3px); } 100% { transform: translateY(0px); } }
-      @keyframes ledPulse { 0%,100% { opacity: 0.6; } 50% { opacity: 1; } }
-      @keyframes ledGlowPulse { 0%,100% { opacity: 0.2; transform: scale(0.6); } 50% { opacity: 0.5; transform: scale(1); } }
-      @keyframes hpPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.85; } }
-      .sprite-group { animation: spriteBob 3.5s ease-in-out infinite; }
-      .led-core { animation: ledPulse 1.8s ease-in-out infinite; }
-      .led-glow { animation: ledGlowPulse 1.8s ease-in-out infinite; transform-origin: 74px 160px; }
-      .hp-bar { animation: hpPulse 2s ease-in-out infinite; }
-    </style>
+
   </defs>
-  <rect width="${W}" height="${H}" rx="16" fill="url(#bgGlow)" />
-  <circle cx="23" cy="8" r="0.8" fill="#ffffff" opacity="0.3" /><circle cx="87" cy="12" r="0.6" fill="#ffffff" opacity="0.2" />
-  <circle cx="156" cy="5" r="0.7" fill="#ffffff" opacity="0.25" /><circle cx="302" cy="9" r="0.5" fill="#ffffff" opacity="0.15" />
-  <circle cx="418" cy="6" r="0.8" fill="#ffffff" opacity="0.2" /><circle cx="55" cy="210" r="0.6" fill="#ffffff" opacity="0.15" />
-  <circle cx="380" cy="214" r="0.7" fill="#ffffff" opacity="0.2" />
-  <rect x="2" y="2" width="${W-4}" height="${H-4}" rx="14" fill="url(#cardGrad)" stroke="#52525b" stroke-width="2" />
-  <rect x="5" y="5" width="${W-10}" height="${H-10}" rx="11" fill="none" stroke="#7f001c" stroke-width="1" stroke-dasharray="2 4" opacity="0.5" />
-  <path d="M 10 16 L 10 10 L 16 10" stroke="#7f001c" stroke-width="2" fill="none" opacity="0.8" /><path d="M 11 17 L 11 11 L 17 11" stroke="#f87171" stroke-width="0.8" fill="none" opacity="0.3" />
-  <path d="M ${W-10} 16 L ${W-10} 10 L ${W-16} 10" stroke="#7f001c" stroke-width="2" fill="none" opacity="0.8" /><path d="M ${W-11} 17 L ${W-11} 11 L ${W-17} 11" stroke="#f87171" stroke-width="0.8" fill="none" opacity="0.3" />
-  <path d="M 10 ${H-16} L 10 ${H-10} L 16 ${H-10}" stroke="#7f001c" stroke-width="2" fill="none" opacity="0.8" /><path d="M 11 ${H-17} L 11 ${H-11} L 17 ${H-11}" stroke="#f87171" stroke-width="0.8" fill="none" opacity="0.3" />
-  <path d="M ${W-10} ${H-16} L ${W-10} ${H-10} L ${W-16} ${H-10}" stroke="#7f001c" stroke-width="2" fill="none" opacity="0.8" /><path d="M ${W-11} ${H-17} L ${W-11} ${H-11} L ${W-17} ${H-11}" stroke="#f87171" stroke-width="0.8" fill="none" opacity="0.3" />
-  <circle cx="30" cy="8" r="1" fill="#7f001c" opacity="0.5" /><circle cx="60" cy="8" r="0.7" fill="#7f001c" opacity="0.3" />
-  <circle cx="${W-30}" cy="8" r="1" fill="#7f001c" opacity="0.5" /><circle cx="${W-60}" cy="8" r="0.7" fill="#7f001c" opacity="0.3" />
-  <rect x="18" y="18" width="112" height="184" rx="6" fill="url(#bezelGrad)" stroke="#18181b" stroke-width="1.5" />
-  <circle cx="22" cy="22" r="1.5" fill="#18181b" opacity="0.6" /><circle cx="22" cy="198" r="1.5" fill="#18181b" opacity="0.6" />
-  <circle cx="126" cy="22" r="1.5" fill="#18181b" opacity="0.6" /><circle cx="126" cy="198" r="1.5" fill="#18181b" opacity="0.6" />
-  <rect x="24" y="24" width="100" height="115" rx="3" fill="url(#screenGrad)" stroke="#18181b" stroke-width="1.5" />
-  <rect x="24" y="24" width="100" height="115" rx="3" fill="url(#scanlines)" />
-  <polygon points="24,24 124,24 24,115" fill="url(#screenGlare)" />
-  <rect x="26" y="26" width="4" height="4" fill="#18181b" opacity="0.08" /><rect x="118" y="26" width="4" height="4" fill="#18181b" opacity="0.08" />
-  <rect x="26" y="137" width="4" height="4" fill="#18181b" opacity="0.08" /><rect x="118" y="137" width="4" height="4" fill="#18181b" opacity="0.08" />
-  <ellipse cx="76" cy="140" rx="16" ry="3" fill="#000" opacity="0.12" class="sprite-group" />
-  <g class="sprite-group" transform="translate(26, 30)">${spriteSvgRects}</g>
-  <rect x="48" y="137" width="50" height="2" fill="#18181b" opacity="0.08" />
-  <circle cx="74" cy="160" r="6" fill="#7f001c" opacity="0.15" class="led-glow" />
-  <circle cx="74" cy="160" r="3" fill="#ef4444" class="led-core" /><circle cx="74" cy="160" r="1.5" fill="#fca5a5" class="led-core" />
-  <rect x="24" y="145" width="100" height="42" rx="3" fill="#18181b" />
-  <line x1="30" y1="153" x2="118" y2="153" stroke="#7f001c" stroke-width="0.5" opacity="0.3" />
-  <text x="74" y="164" fill="#ffffff" font-family="monospace" font-size="9" font-weight="900" text-anchor="middle" letter-spacing="1">LV ${level}</text>
-  <text x="74" y="173" fill="#a1a1aa" font-family="monospace" font-size="6.5" opacity="0.7" text-anchor="middle" letter-spacing="0.5">ROASTEMON PROFILE</text>
-  <text x="74" y="182" fill="#7f001c" font-family="monospace" font-size="6" font-weight="bold" text-anchor="middle" letter-spacing="1">CHAOS NETWORK</text>
-  <rect x="94" y="147" width="26" height="8" rx="2" fill="#7f001c" opacity="0.3" /><text x="107" y="153" fill="#fca5a5" font-family="monospace" font-size="5" font-weight="bold" text-anchor="middle">GEN.2</text>
-  <rect x="142" y="18" width="300" height="24" rx="4" fill="#18181b" stroke="#27272a" stroke-width="0.5" />
-  <text x="150" y="34" fill="#7f001c" font-family="monospace" font-size="10" font-weight="900">@</text>
-  <text x="158" y="34" fill="#ffffff" font-family="monospace" font-size="10" font-weight="900" letter-spacing="0.5">${cleanUsername.toUpperCase()}</text>
-  <text x="432" y="34" fill="#facc15" font-family="monospace" font-size="6" text-anchor="end" opacity="0.7">W</text>
-  <text x="426" y="34" fill="#ffffff" font-family="monospace" font-size="8.5" font-weight="bold" text-anchor="end">${entry?.wins || 0}</text>
-  <text x="440" y="28" fill="#a1a1aa" font-family="monospace" font-size="5" text-anchor="end" opacity="0.5">L</text>
-  <text x="440" y="34" fill="#a1a1aa" font-family="monospace" font-size="7" text-anchor="end">${entry?.losses || 0}</text>
-  <text x="145" y="57" fill="#ffffff" font-family="monospace" font-size="12" font-weight="900" filter="url(#glow)">${monName.toUpperCase()}</text>
-  <line x1="145" y1="60" x2="145" y2="60" stroke="#7f001c" stroke-width="1.5" opacity="0.6" />
-  <line x1="145" y1="60" x2="${145 + monName.length * 7.5}" y2="60" stroke="#7f001c" stroke-width="1" opacity="0.3" />
-  <rect x="330" y="46" width="112" height="16" rx="20" fill="#18181b" stroke="#7f001c" stroke-width="1.5" />
-  <rect x="331.5" y="47.5" width="109" height="13" rx="18" fill="none" stroke="#f87171" stroke-width="0.5" opacity="0.3" />
-  <text x="386" y="57" fill="#fca5a5" font-family="monospace" font-size="7.5" font-weight="bold" text-anchor="middle" letter-spacing="0.5">${type.toUpperCase()}</text>
-  <line x1="142" y1="67" x2="442" y2="67" stroke="#334155" stroke-width="1" stroke-dasharray="2 4" opacity="0.4" />
-  <text x="145" y="85" fill="#a1a1aa" font-family="monospace" font-size="7.5" font-weight="bold">HEALTH LOOP</text>
-  <text x="220" y="85" fill="#ffffff" font-family="monospace" font-size="8" font-weight="bold" text-anchor="end">${hp}%</text>
-  <rect x="228" y="77" width="214" height="9" rx="3" fill="#18181b" /><rect x="228" y="77" width="${Math.floor(hp * 2.14)}" height="9" rx="3" fill="url(#hpGrad)" class="hp-bar" /><rect x="228" y="77" width="${Math.floor(hp * 2.14)}" height="9" rx="3" fill="url(#barShine)" /><rect x="228" y="77" width="${Math.floor(hp * 2.14)}" height="4" rx="2" fill="#ffffff" opacity="0.08" />
-  <text x="145" y="98" fill="#a1a1aa" font-family="monospace" font-size="7.5" font-weight="bold">BUG SUMMONS</text><text x="220" y="98" fill="#ffffff" font-family="monospace" font-size="8" font-weight="bold" text-anchor="end">${attack}%</text>
-  <rect x="228" y="90" width="214" height="9" rx="3" fill="#18181b" /><rect x="228" y="90" width="${Math.floor(attack * 2.14)}" height="9" rx="3" fill="url(#atkGrad)" /><rect x="228" y="90" width="${Math.floor(attack * 2.14)}" height="9" rx="3" fill="url(#barShine)" /><rect x="228" y="90" width="${Math.floor(attack * 2.14)}" height="4" rx="2" fill="#ffffff" opacity="0.08" />
-  <text x="145" y="111" fill="#a1a1aa" font-family="monospace" font-size="7.5" font-weight="bold">CODE SHIELD</text><text x="220" y="111" fill="#ffffff" font-family="monospace" font-size="8" font-weight="bold" text-anchor="end">${defense}%</text>
-  <rect x="228" y="103" width="214" height="9" rx="3" fill="#18181b" /><rect x="228" y="103" width="${Math.floor(defense * 2.14)}" height="9" rx="3" fill="url(#defGrad)" /><rect x="228" y="103" width="${Math.floor(defense * 2.14)}" height="9" rx="3" fill="url(#barShine)" /><rect x="228" y="103" width="${Math.floor(defense * 2.14)}" height="4" rx="2" fill="#ffffff" opacity="0.08" />
-  <text x="145" y="124" fill="#a1a1aa" font-family="monospace" font-size="7.5" font-weight="bold">CYCLE SPEED</text><text x="220" y="124" fill="#ffffff" font-family="monospace" font-size="8" font-weight="bold" text-anchor="end">${speed}%</text>
-  <rect x="228" y="116" width="214" height="9" rx="3" fill="#18181b" /><rect x="228" y="116" width="${Math.floor(speed * 2.14)}" height="9" rx="3" fill="url(#spdGrad)" /><rect x="228" y="116" width="${Math.floor(speed * 2.14)}" height="9" rx="3" fill="url(#barShine)" /><rect x="228" y="116" width="${Math.floor(speed * 2.14)}" height="4" rx="2" fill="#ffffff" opacity="0.08" />
-  <text x="145" y="137" fill="#a1a1aa" font-family="monospace" font-size="7.5" font-weight="bold">CHAOS FLOW</text><text x="220" y="137" fill="#ffffff" font-family="monospace" font-size="8" font-weight="bold" text-anchor="end">${chaos}%</text>
-  <rect x="228" y="129" width="214" height="9" rx="3" fill="#18181b" /><rect x="228" y="129" width="${Math.floor(chaos * 2.14)}" height="9" rx="3" fill="url(#chaosGrad)" /><rect x="228" y="129" width="${Math.floor(chaos * 2.14)}" height="9" rx="3" fill="url(#barShine)" /><rect x="228" y="129" width="${Math.floor(chaos * 2.14)}" height="4" rx="2" fill="#ffffff" opacity="0.08" />
-  <rect x="140" y="146" width="304" height="42" rx="5" fill="#18181b" stroke="#27272a" stroke-width="1" />
-  <rect x="142" y="148" width="300" height="38" rx="3" fill="#f1f5f9" /><rect x="142" y="148" width="300" height="38" rx="3" fill="url(#scanlines)" opacity="0.3" />
-  <line x1="142" y1="148" x2="442" y2="148" stroke="#7f001c" stroke-width="1" />
-  <polygon points="150,148 150,156 158,148" fill="#7f001c" opacity="0.8" /><polygon points="151,149 151,155 157,149" fill="#f1f5f9" />
+
+  <!-- Background -->
+  <rect width="${W}" height="${H}" rx="10" fill="url(#bgGrad)" />
+  <rect width="${W}" height="${H}" rx="10" fill="url(#cardShine)" />
+
+  <!-- Card Border -->
+  <rect x="3" y="3" width="${W - 6}" height="${H - 6}" rx="10" stroke="#27272a" stroke-width="2" fill="none" />
+
+  <!-- Top Accent Bar -->
+  <rect x="4" y="4" width="${W - 8}" height="3" fill="#7f001c" />
+
+  <!-- Monster Name (big, left) -->
+  <text x="16" y="24" fill="#ffffff" font-family="monospace" font-size="18" font-weight="bold">${monName.toUpperCase().slice(0, 16)}</text>
+
+  <!-- HP / LV Badge (right) -->
+  <rect x="${W - 120}" y="8" width="108" height="18" rx="5" fill="#1a1a1a" />
+  <text x="${W - 112}" y="22" fill="#ef4444" font-family="monospace" font-size="11" font-weight="bold">&#9829;</text>
+  <text x="${W - 98}" y="22" fill="#ffffff" font-family="monospace" font-size="11" font-weight="bold">${hp}</text>
+  <text x="${W - 76}" y="22" fill="#52525b" font-family="monospace" font-size="11" font-weight="bold">|</text>
+  <text x="${W - 58}" y="22" fill="#e2dfde" font-family="monospace" font-size="11" font-weight="bold">LV${level}</text>
+
+  <!-- Separator -->
+  <line x1="12" y1="34" x2="${W - 12}" y2="34" stroke="#1e293b" stroke-width="1" />
+
+  <!-- Artwork Panel -->
+  <rect x="140" y="34" width="180" height="108" rx="8" fill="#475569" />
+
+  <!-- Procedural Sprite -->
+  <g transform="translate(${(W - 96) / 2}, 40)">
+    ${spriteSvgRects}
+  </g>
+
+  <!-- Type Badge -->
+  <rect x="${typeX}" y="142" width="${typeW}" height="14" rx="7" fill="rgba(127,0,28,0.15)" stroke="#7f001c" stroke-width="0.5" />
+  <text x="${W / 2}" y="153" fill="#7f001c" font-family="monospace" font-size="7" font-weight="bold" text-anchor="middle">${typeLabel}</text>
+
+  <!-- HP Bar -->
+  <text x="16" y="170" fill="#a1a1aa" font-family="monospace" font-size="7" font-weight="bold">HP</text>
+  <rect x="34" y="164" width="80" height="10" rx="4" fill="#27272a" />
+  <rect x="34" y="164" width="${hpW}" height="10" rx="4" fill="${hpColor}" />
+  <text x="40" y="172" fill="#ffffff" font-family="monospace" font-size="7" font-weight="bold">${hp}</text>
+
+  <!-- ATK / DEF / SPD / CHA Stats -->
+  <text x="140" y="170" fill="#71717a" font-family="monospace" font-size="6.5" font-weight="bold">ATK</text>
+  <text x="166" y="170" fill="#e2dfde" font-family="monospace" font-size="8" font-weight="bold">${attack}</text>
+
+  <text x="210" y="170" fill="#71717a" font-family="monospace" font-size="6.5" font-weight="bold">DEF</text>
+  <text x="236" y="170" fill="#e2dfde" font-family="monospace" font-size="8" font-weight="bold">${defense}</text>
+
+  <text x="280" y="170" fill="#71717a" font-family="monospace" font-size="6.5" font-weight="bold">SPD</text>
+  <text x="306" y="170" fill="#e2dfde" font-family="monospace" font-size="8" font-weight="bold">${speed}</text>
+
+  <text x="350" y="170" fill="#71717a" font-family="monospace" font-size="6.5" font-weight="bold">CHA</text>
+  <text x="376" y="170" fill="#e2dfde" font-family="monospace" font-size="8" font-weight="bold">${chaos}</text>
+
+  <!-- W/L Record -->
+  <text x="${W - 16}" y="170" fill="#52525b" font-family="monospace" font-size="7" font-weight="bold" text-anchor="end">W:${entry?.wins || 0} L:${entry?.losses || 0}</text>
+
+  <!-- Roast / Description Box -->
+  <rect x="16" y="180" width="${W - 32}" height="24" rx="4" fill="#1e1e24" stroke="#334155" stroke-width="0.5" />
   ${roastSvg}
-  <text x="145" y="207" fill="#7f001c" font-family="monospace" font-size="6" font-weight="bold" letter-spacing="1.5">● GITTYMON-STER</text>
-  <rect x="256" y="198" width="36" height="10" rx="3" fill="#7f001c" opacity="0.2" /><text x="274" y="205" fill="#7f001c" font-family="monospace" font-size="5.5" font-weight="bold" text-anchor="middle" letter-spacing="0.5">V2.0</text>
-  <text x="442" y="207" fill="#3f3f46" font-family="monospace" font-size="6" font-weight="bold" text-anchor="end" opacity="0.5">GITHUB.COM/KEVINJOBIN1/GITTYMON</text>
+
+  <!-- Footer -->
+  <text x="16" y="214" fill="#52525b" font-family="monospace" font-size="6.5" font-weight="bold">@${cleanUsername.toUpperCase()}</text>
+  <text x="${W - 16}" y="214" fill="#7f001c" font-family="monospace" font-size="7" font-weight="bold" text-anchor="end">&#9889; GITTYMON</text>
 </svg>`;
 }
 
@@ -397,12 +467,13 @@ export async function generateGifCard(username: string, env: Env): Promise<Uint8
   ];
   const roast = roasts[codeHash % roasts.length];
   const spriteSeed = `${cleanUsername}-${joinedYear}-${publicRepos}`;
-  const spriteGrid = getProceduralGrid24(spriteSeed);
+  const spriteResult = buildServerSpriteGrid(spriteSeed);
+  const spriteGrid = spriteResult.grid;
   const W = 230, H = 110;
   const PALETTE = [
-    [10,13,22],[24,24,27],[127,0,28],[255,255,255],[197,203,180],[173,181,150],
+    [10,13,22],[24,24,27],[127,0,28],[255,255,255],[30,41,59],[20,26,38],
     [26,26,26],[63,63,70],[226,223,222],[239,68,68],[250,204,21],[39,39,42],
-    [161,161,170],[56,189,248],[244,63,94],[15,23,42],[248,113,113],[168,85,247],
+    [161,161,170],[56,189,248],[113,113,122],[15,23,42],[34,197,94],[168,85,247],
     [34,211,238],[250,204,21],
   ];
   const gif = new GIFEncoder();
@@ -412,77 +483,74 @@ export async function generateGifCard(username: string, env: Env): Promise<Uint8
   for (let f = 0; f < NUM_FRAMES; f++) {
     const canvas = new PixelCanvas(W, H);
     canvas.fillRect(0, 0, W, H, 0);
+    // Background dots
     for (let gy = 0; gy < H; gy += 8) {
       for (let gx = 0; gx < W; gx += 8) { if ((gx + gy + f * 3) % 24 < 12) canvas.setPixel(gx, gy, 15); }
     }
-    const scanY = Math.floor(((f * 7) % H));
-    for (let sx = 0; sx < W; sx++) { if (sx % 2 === 0) canvas.setPixel(sx, scanY, 13); if (sx % 3 === 0 && scanY + 1 < H) canvas.setPixel(sx, scanY + 1, 13); }
-    canvas.fillRect(3, 3, W - 6, H - 6, 1);
-    canvas.drawRect(3, 3, W - 6, H - 6, 6);
-    for (let dx = 5; dx < 14; dx++) { canvas.setPixel(dx, 4, 2); canvas.setPixel(dx, H - 5, 2); }
-    for (let dx = W - 14; dx < W - 5; dx++) { canvas.setPixel(dx, 4, 2); canvas.setPixel(dx, H - 5, 2); }
-    for (let dy = 5; dy < 14; dy++) { canvas.setPixel(4, dy, 2); canvas.setPixel(W - 5, dy, 2); }
-    for (let dy = H - 14; dy < H - 5; dy++) { canvas.setPixel(4, dy, 2); canvas.setPixel(W - 5, dy, 2); }
-    if (f % 2 === 0) { for (let cx = 6; cx < W - 6; cx += 4) { canvas.setPixel(cx, 5, 2); canvas.setPixel(cx, H - 6, 2); } for (let cy = 6; cy < H - 6; cy += 4) { canvas.setPixel(5, cy, 2); canvas.setPixel(W - 6, cy, 2); } }
-    canvas.fillRect(9, 9, 56, 90, 7);
-    canvas.drawRect(9, 9, 56, 90, 6);
-    const ledColor = (f % 4 < 2) ? 9 : 10;
-    canvas.fillRect(11, 19, 3, 3, ledColor);
-    if (f % 3 === 0) { canvas.setPixel(10, 18, 9); canvas.setPixel(14, 18, 9); canvas.setPixel(10, 22, 9); canvas.setPixel(14, 22, 9); canvas.setPixel(12, 17, 9); canvas.setPixel(12, 23, 9); canvas.setPixel(9, 20, 9); canvas.setPixel(15, 20, 9); }
-    canvas.fillRect(12, 12, 50, 56, 4);
-    for (let sy = 12; sy < 68; sy += 2) for (let sx = 12; sx < 62; sx++) canvas.setPixel(sx, sy, 5);
-    canvas.drawRect(12, 12, 50, 56, 6);
-    if (f % 2 === 0) { for (let g = 0; g < 6; g++) { canvas.setPixel(14 + g, 14 + g, 3); canvas.setPixel(16 + g, 16 + g, 4); } }
+    // Outer frame
+    canvas.fillRect(2, 2, W - 4, H - 4, 1);
+    canvas.drawRect(2, 2, W - 4, H - 4, 7);
+    // Top accent bar
+    canvas.fillRect(3, 3, W - 6, 2, 2);
+
+    // Name
+    const trimmedName = monName.toUpperCase().slice(0, 14);
+    canvas.drawText(trimmedName, 6, 8, 3);
+    // HP/LV badge
+    const hpStr = `${hp}`;
+    canvas.drawText(`LV${level}`, W - 14 - hpStr.length * 6, 8, 12);
+    canvas.drawText(`HP${hpStr}`, W - 14 - hpStr.length * 6 - 6 - 8, 8, 9);
+
+    // Separator
+    for (let dx = 4; dx < W - 4; dx += 2) canvas.setPixel(dx, 16, 11);
+
+    // Sprite with bounce
     const bounceY = Math.floor(bounceCurve[f]);
     const shadowSquish = (bounceY < -2) ? 5 : 3;
-    canvas.fillRect(30, 64 - shadowSquish, 14, 4, 15);
-    canvas.setPixel(34, 64 - shadowSquish, 6);
+    canvas.fillRect(79, 70 - shadowSquish, 14, 4, 15);
+    canvas.setPixel(83, 70 - shadowSquish, 6);
+
+    const spriteScale = 2;
+    const spriteX = Math.floor((W - 24 * spriteScale) / 2);
+    const spriteY = 22;
     for (let yGrid = 0; yGrid < 24; yGrid++) {
       for (let xGrid = 0; xGrid < 24; xGrid++) {
         const cell = spriteGrid[yGrid][xGrid];
-        if (cell > 0) { let ci = 6; if (cell === 2) ci = 2; else if (cell === 3) ci = 3; const dy = (yGrid < 17) ? bounceY : 0; canvas.setPixel(25 + xGrid, 27 + yGrid + dy, ci); }
+        if (cell > 0) { let ci = 6; if (cell === 2) ci = 2; else if (cell === 3) ci = 3; const dy = (yGrid < 17) ? bounceY : 0; canvas.setPixel(spriteX + xGrid, spriteY + yGrid + dy, ci); }
       }
     }
-    canvas.fillRect(12, 70, 50, 20, 6);
-    canvas.drawText(`LV ${level}`, 20, 73, 3);
-    canvas.drawText('GITTY', 20, 82, 2);
-    canvas.drawRect(52, 71, 8, 3, 2);
-    canvas.drawText('2', 53, 72, 3);
-    canvas.fillRect(69, 8, 154, 12, 6);
-    canvas.drawText(`@${cleanUsername.toUpperCase().slice(0, 14)}`, 73, 11, 3);
-    const wlStr = `W:${entry?.wins || 0}L:${entry?.losses || 0}`;
-    canvas.drawText(wlStr, 175, 11, 2);
-    const trimmedName = monName.toUpperCase().slice(0, 12);
-    canvas.drawText(trimmedName, 73, 24, 3);
-    canvas.drawRect(156, 22, 64, 8, 2);
+
+    // Type below sprite
     const trimmedType = type.length > 10 ? type.substring(0, 10) : type;
-    canvas.drawText(trimmedType.toUpperCase(), 159, 24, 2);
-    for (let dx = 69; dx < 222; dx += 4) canvas.setPixel(dx, 32, 11);
-    const stats = [
-      {name:"HP ",val:hp,col:2,glowCol:16,glow:true},{name:"ATK",val:attack,col:8,glowCol:3,glow:false},
-      {name:"DEF",val:defense,col:3,glowCol:3,glow:false},{name:"SPD",val:speed,col:7,glowCol:13,glow:false},
-      {name:"CHS",val:chaos,col:14,glowCol:17,glow:true},
-    ];
-    stats.forEach((st, idx) => {
-      const ry = 35 + idx * 7;
-      canvas.drawText(st.name, 73, ry, 12);
-      canvas.drawText(`${st.val}%`, 100, ry, 3);
-      canvas.fillRect(126, ry + 1, 93, 3, 11);
-      const fillW = Math.max(2, Math.floor((st.val / 100) * 93));
-      canvas.fillRect(126, ry + 1, fillW, 3, st.col);
-      if (st.glow && f % 4 < 2) canvas.fillRect(126, ry + 1, Math.min(fillW, 93), 3, st.glowCol);
-    });
-    canvas.fillRect(69, 71, 154, 22, 8);
-    canvas.drawRect(69, 71, 154, 22, 6);
-    canvas.fillRect(72, 71, 5, 4, 2);
-    canvas.fillRect(73, 72, 3, 2, 8);
+    canvas.drawText(trimmedType.toUpperCase(), Math.floor((W - trimmedType.length * 6) / 2), 78, 2);
+
+    // Stats row
+    canvas.fillRect(4, 83, 70, 5, 11);
+    const hpPct = Math.min(100, hp) / 100;
+    const hpColor = hpPct > 0.5 ? 16 : hpPct > 0.25 ? 10 : 9;
+    canvas.fillRect(4, 83, Math.max(2, Math.floor(70 * hpPct)), 5, hpColor);
+    canvas.drawText(`HP${hp}`, 6, 84, 3);
+
+    canvas.drawText(`ATK${attack}`, 82, 84, 3);
+    canvas.drawText(`DEF${defense}`, 82, 90, 3);
+    canvas.drawText(`SPD${speed}`, 147, 84, 3);
+    canvas.drawText(`CHA${chaos}`, 147, 90, 3);
+
+    const wlStr = `W${entry?.wins || 0}L${entry?.losses || 0}`;
+    canvas.drawText(wlStr, W - 6 - wlStr.length * 6, 84, 14);
+
+    // Roast
+    canvas.fillRect(3, 96, W - 6, 11, 11);
     const fullRoastUpper = roast.toUpperCase();
     let visibleCount = fullRoastUpper.length;
     if (f < 12) visibleCount = Math.floor(fullRoastUpper.length * (f + 1) / 12);
     const visibleText = fullRoastUpper.substring(0, visibleCount);
-    const wrapLines = wrapTextToLength(visibleText, 22).slice(0, 3);
-    if (f % 3 < 2 && wrapLines.length > 0) { const lastIdx = wrapLines.length - 1; if (wrapLines[lastIdx].length < 22) wrapLines[lastIdx] += '_'; }
-    wrapLines.forEach((line, li) => canvas.drawText(line, 74, 74 + li * 6, 6));
+    const wrapLines = wrapTextToLength(visibleText, 18).slice(0, 1);
+    if (f % 3 < 2 && wrapLines.length > 0) {
+      wrapLines[0] = wrapLines[0].padEnd(19, '_');
+    }
+    wrapLines.forEach((line, li) => canvas.drawText(line, 6, 98 + li * 6, 8));
+
     gif.writeFrame(canvas.pixels, W, H, { palette: PALETTE, delay: 100 });
   }
   gif.finish();

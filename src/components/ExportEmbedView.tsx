@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { RoastMon } from '../types';
 import { playRetroSound } from '../utils/audio';
-import { drawCardFrame, downloadCardAsPng, downloadFromUrl } from '../utils/cardRenderer';
+import { drawCardFrame, downloadCardAsPng, downloadFromUrl, generateCardSvg } from '../utils/cardRenderer';
 import type { CardData } from '../utils/cardRenderer';
 
 interface ExportEmbedViewProps {
@@ -144,6 +144,11 @@ export function ExportEmbedView({
       label: 'SHARE PAGE LINK (URL)',
       code: cardUrl,
       desc: 'Full share page with OG meta tags. Paste into Discord, Slack, Twitter, or anywhere for an auto-generated rich preview with title, image & roast.',
+    },
+    {
+      label: 'INLINE SVG CODE',
+      code: generateCardSvg(cardData),
+      desc: 'Full inline SVG string matching the PNG card. No server needed — embed directly in HTML. 24KB self-contained.',
     },
     {
       label: 'RAW SVG URL (VECTOR)',

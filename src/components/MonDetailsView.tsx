@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { RoastMon } from '../types';
-import { drawProceduralMon, drawDitheredAvatar } from '../utils/procGen';
+import { drawProceduralMon, drawDitheredAvatar, PALETTE_NAMES } from '../utils/procGen';
+import type { PaletteName } from '../utils/procGen';
 import { playRetroSound } from '../utils/audio';
 
 interface MonDetailsViewProps {
@@ -12,6 +13,8 @@ interface MonDetailsViewProps {
 export function MonDetailsView({ mon, onBattle, onBack }: MonDetailsViewProps) {
   const [activeTab, setActiveTab] = useState<'ROAST' | 'STATS' | 'MOVES'>('ROAST');
   const [viewMode, setViewMode] = useState<'MONSTER' | 'AVATAR'>('MONSTER');
+  const [paletteOverride, setPaletteOverride] = useState<PaletteName | undefined>(undefined);
+  const [paletteIndex, setPaletteIndex] = useState(-1); // -1 = seed default
   const [frame, setFrame] = useState(0);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -29,18 +32,25 @@ export function MonDetailsView({ mon, onBattle, onBack }: MonDetailsViewProps) {
     return () => cancelAnimationFrame(animId);
   }, []);
 
+  const cyclePalette = () => {
+    playRetroSound('beep');
+    const idx = paletteIndex === -1 ? 1 : (paletteIndex + 1) % PALETTE_NAMES.length;
+    setPaletteIndex(idx);
+    setPaletteOverride(PALETTE_NAMES[idx]);
+  };
+
   // Whenever frame, viewMode, or mon changes, update the visual on the Canvas!
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     if (viewMode === 'MONSTER') {
-      drawProceduralMon(canvas, mon.spriteSeed, frame, 'dmg');
+      drawProceduralMon(canvas, mon.spriteSeed, frame, paletteOverride);
     } else {
       // Dither profile pic
       drawDitheredAvatar(canvas, mon.avatarUrl);
     }
-  }, [viewMode, frame, mon]);
+  }, [viewMode, frame, mon, paletteOverride]);
 
   const toggleViewMode = () => {
     playRetroSound('beep');
@@ -62,16 +72,21 @@ export function MonDetailsView({ mon, onBattle, onBack }: MonDetailsViewProps) {
 
       {/* Visual Canvas Panel and Character Overview */}
       <div className="flex items-start space-x-2 my-1.5">
-        <div className="relative group cursor-pointer" onClick={toggleViewMode}>
+        <div className="relative group" onClick={toggleViewMode}>
           <canvas
             ref={canvasRef}
             width={72}
             height={72}
             className="w-[72px] h-[72px] border-2 border-[#1a1a1a] bg-white rounded-sm pixelated shadow-[2px_2px_0px_#1a1a1a]"
           />
-          <div className="absolute -bottom-1 -right-1 bg-white border border-[#1a1a1a] px-0.5 py-0 text-[6.5px] uppercase font-mono font-bold leading-none transform translate-y-2 group-hover:text-[#7f001c]">
-            SELECT=ALT
-          </div>
+          {/* Palette badge — click to cycle */}
+          <button
+            onClick={(e) => { e.stopPropagation(); cyclePalette(); }}
+            className="absolute -bottom-1 -right-1 bg-white border border-[#1a1a1a] px-0.5 py-0 text-[6.5px] uppercase font-mono font-bold leading-none cursor-pointer hover:text-[#7f001c] transition-colors"
+            title="Click to cycle color palette"
+          >
+            {paletteOverride ? PALETTE_NAMES[paletteIndex] : 'DMG'} ◈
+          </button>
         </div>
 
         {/* Character profile basic types */}

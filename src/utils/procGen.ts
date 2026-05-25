@@ -24,6 +24,375 @@ export class LCG {
   }
 }
 
+// ── Color Palettes (4 colors: outline, body-fill, light-fill, accent) ──
+export const PALETTES: Record<string, [string, string, string, string]> = {
+  dmg:    ['#1a1a1a', '#7f001c', '#e2dfde', '#ffffff'],
+  pocket: ['#0f172a', '#475569', '#94a3b8', '#f8fafc'],
+  ember:  ['#1a1a1a', '#dc2626', '#fdba74', '#fef3c7'],
+  frost:  ['#1e293b', '#0284c7', '#7dd3fc', '#f0f9ff'],
+  toxic:  ['#1a1a1a', '#16a34a', '#a3e635', '#f0fdf4'],
+  royal:  ['#1a1a1a', '#7e22ce', '#e9d5ff', '#faf5ff'],
+  neon:   ['#1a1a1a', '#ec4899', '#2dd4bf', '#ffffff'],
+};
+
+export type PaletteName = keyof typeof PALETTES;
+
+// ── Palette selection by seed ──
+export const PALETTE_NAMES = Object.keys(PALETTES) as PaletteName[];
+export function pickPalette(lcg: LCG): PaletteName {
+  return PALETTE_NAMES[lcg.nextRange(0, PALETTE_NAMES.length)];
+}
+
+// ── Return type for the shared grid builder ──
+export interface SpriteResult {
+  grid: number[][];           // 24×24 grid 0=empty, 1=outline, 2=body, 3=accent, 4=pattern, 5=glow
+  palette: [string, string, string, string];
+  paletteName: PaletteName;
+  eyesType: number;
+  blinkState: number;         // 0=open, 1=half, 2=closed
+  mouthType: number;
+}
+
+/**
+ * Build the full 24×24 sprite grid deterministically from a seed + frame.
+ * Returns the grid and visual metadata so both procGen and cardRenderer can use it.
+ */
+export function buildSpriteGrid(seed: string, frame: number, paletteOverride?: PaletteName): SpriteResult {
+  const hash = getSeedHash(seed);
+  const lcg = new LCG(hash);
+
+  const paletteName = paletteOverride || pickPalette(lcg);
+  const palette = PALETTES[paletteName];
+
+  // ── Anatomy selectors ──
+  const bodyShape     = lcg.nextRange(0, 5);    // 0=round, 1=tall, 2=wide, 3=diamond, 4=pear
+  const limbsType     = lcg.nextRange(0, 4);    // 0=stubby, 1=claws, 2=wings, 3=none
+  const eyesType      = lcg.nextRange(0, 6);    // 0=round, 1=strip, 2=angry, 3=happy, 4=sleepy, 5=glow
+  const hornsType     = lcg.nextRange(0, 5);    // 0=bunny, 1=wing-horns, 2=unicorn, 3=spikes, 4=none
+  const tailType      = lcg.nextRange(0, 4);    // 0=none, 1=curly, 2=spiky, 3=fluffy
+  const patternType   = lcg.nextRange(0, 4);    // 0=none, 1=stripes, 2=spots, 3=checker
+  const mouthType     = lcg.nextRange(0, 3);    // 0=smile, 1=frown, 2=open
+
+  // ── Blink timing (every ~120–200 frames, closed for ~6 frames) ──
+  const blinkPeriod = lcg.nextRange(120, 200);
+  const blinkDuration = lcg.nextRange(4, 8);
+  const localFrame = frame % blinkPeriod;
+  const blinkState = localFrame < blinkDuration
+    ? (localFrame < 2 ? 2 : localFrame < blinkDuration - 2 ? 1 : 0)
+    : 0;
+
+  const grid: number[][] = Array.from({ length: 24 }, () => Array(24).fill(0));
+
+  // ── Helper: fill pixel with pattern override ──
+  const fillWithPattern = (y: number, x: number, base: number): number => {
+    if (base === 0) return 0;
+    if (base === 1 || base === 4 || base === 5) return base;
+    if (base === 2 && patternType === 1 && (Math.floor(y / 2) % 2 === 0)) return 4; // stripes
+    if (base === 2 && patternType === 2 && (y % 3 === 0 && x % 3 === 0)) return 4;  // spots
+    if (base === 2 && patternType === 3 && ((y + x) % 4 < 2)) return 3;             // checker → accent
+    return base;
+  };
+
+  // ═══════════════════════════════════════════════
+  //  1. CORE BODY
+  // ═══════════════════════════════════════════════
+  for (let y = 4; y < 20; y++) {
+    for (let x = 3; x < 12; x++) {
+      let fill = 0;
+
+      switch (bodyShape) {
+        case 0: // Round (classic blob)
+          if (x <= 11 && x >= 11 - Math.floor(lcg.next() * 5 + 3) && y >= 7 && y <= 16) {
+            fill = lcg.next() > 0.35 ? 2 : 3;
+          }
+          break;
+        case 1: // Tall — extend to column 11 so mirror is continuous
+          if (x >= 7 && x <= 11 && y >= 4 && y <= 18) {
+            fill = 2;
+          } else if (y >= 7 && y <= 16 && x >= 5 && x <= 11) {
+            fill = lcg.next() > 0.4 ? 2 : 3;
+          }
+          break;
+        case 2: // Wide
+          if (y >= 8 && y <= 15 && x >= 2 && x <= 11) {
+            fill = lcg.next() > 0.35 ? 2 : 3;
+          }
+          break;
+        case 3: // Diamond
+          if (y >= 5 && y <= 18) {
+            const halfW = Math.floor((18 - Math.abs(11.5 - y)) / 1.8);
+            if (x >= 11 - halfW) fill = lcg.next() > 0.3 ? 2 : 3;
+          }
+          break;
+        case 4: // Pear
+          const pearW = y > 12 ? 11 - Math.floor((y - 12) * 0.3) : 8 - Math.floor((12 - y) * 0.4);
+          if (x >= 11 - pearW && y >= 6 && y <= 18) {
+            fill = lcg.next() > 0.35 ? 2 : 3;
+          }
+          break;
+      }
+      grid[y][x] = fill;
+    }
+  }
+
+  // ═══════════════════════════════════════════════
+  //  2. HORNS / EARS / HEADGEAR
+  // ═══════════════════════════════════════════════
+  if (hornsType === 0) {
+    // Bunny ears
+    for (let y = 3; y <= 6; y++) {
+      if (y >= 4 && y <= 6) { grid[y][9] = 2; grid[y][10] = 2; }
+      if (y === 3) { grid[3][9] = 3; grid[3][10] = 3; }
+    }
+  } else if (hornsType === 1) {
+    // Wing-horns (side protrusions)
+    grid[5][5] = 3; grid[5][6] = 3; grid[6][5] = 2;
+  } else if (hornsType === 2) {
+    // Unicorn horn (center)
+    grid[3][10] = 3; grid[3][11] = 3; grid[4][10] = 3; grid[4][11] = 3;
+    grid[2][10] = 3; grid[2][11] = 3;
+  } else if (hornsType === 3) {
+    // Crown spikes
+    grid[4][7] = lcg.next() > 0.5 ? 3 : 2;
+    grid[4][8] = lcg.next() > 0.5 ? 3 : 2;
+    grid[4][9] = lcg.next() > 0.5 ? 3 : 2;
+    grid[4][10] = lcg.next() > 0.5 ? 3 : 2;
+    grid[5][7] = 2; grid[5][10] = 2;
+  }
+  // hornsType === 4 → none, skip
+
+  // ═══════════════════════════════════════════════
+  //  3. LIMBS / ARMS
+  // ═══════════════════════════════════════════════
+  if (limbsType === 0) {
+    // Stubby arms
+    for (let y = 11; y <= 13; y++) {
+      grid[y][3] = 2; grid[y][4] = 2;
+    }
+  } else if (limbsType === 1) {
+    // Long claws
+    for (let y = 13; y <= 15; y++) {
+      grid[y][2] = 3; grid[y][3] = 3;
+    }
+    grid[16][2] = 2;
+  } else if (limbsType === 2) {
+    // Wings (wide side decorations)
+    for (let y = 8; y <= 14; y++) {
+      const wingX = y < 11 ? y - 5 : 14 - y + 3;
+      if (wingX >= 1) {
+        grid[y][wingX] = (y % 2 === 0) ? 3 : 2;
+      }
+    }
+    grid[10][2] = 3; grid[10][3] = 3;
+  }
+  // limbsType === 3 → no arms
+
+  // ═══════════════════════════════════════════════
+  //  4. FEET / LEGS
+  // ═══════════════════════════════════════════════
+  for (let y = 17; y <= 18; y++) {
+    grid[y][6] = 2; grid[y][7] = 2;
+    grid[y][9] = 2; grid[y][10] = 2;
+  }
+  // Toes
+  grid[18][5] = 3; grid[18][8] = 3; grid[18][11] = 3;
+
+  // ═══════════════════════════════════════════════
+  //  5. EYES
+  // ═══════════════════════════════════════════════
+  const eyeY = eyesType === 4 ? 10 : 9; // sleepy eyes lower
+  const closed = blinkState === 2;
+  const half = blinkState === 1;
+
+  if (closed) {
+    // Closed eyes = horizontal line
+    grid[eyeY][8] = 1; grid[eyeY][9] = 1;
+  } else if (half) {
+    grid[eyeY][8] = 1; grid[eyeY][9] = 1;
+    grid[eyeY - 1][8] = 3; grid[eyeY - 1][9] = 3;
+  } else if (eyesType === 0) {
+    // Large round eyes
+    grid[eyeY][7] = 3; grid[eyeY + 1][7] = 3;
+    grid[eyeY][8] = 0; grid[eyeY + 1][8] = 3;
+    grid[eyeY][9] = 3; grid[eyeY + 1][9] = 3;
+    // Pupils
+    grid[eyeY][7] = 0;
+  } else if (eyesType === 1) {
+    // Horizontal strip
+    grid[eyeY][6] = 3; grid[eyeY][7] = 3; grid[eyeY][8] = 3;
+    grid[eyeY][9] = 3;
+  } else if (eyesType === 2) {
+    // Angry slanted
+    grid[8][6] = 3; grid[9][7] = 3; grid[9][8] = 3;
+    grid[9][9] = 3;
+  } else if (eyesType === 3) {
+    // Happy crescents
+    grid[eyeY][7] = 3; grid[eyeY][8] = 0;
+    grid[eyeY][9] = 3;
+    grid[eyeY - 1][7] = 3; grid[eyeY - 1][9] = 3;
+  } else if (eyesType === 4) {
+    // Sleepy / half-lidded
+    grid[9][7] = 3; grid[9][8] = 3;
+    grid[9][9] = 3; grid[10][8] = 0;
+  } else if (eyesType === 5) {
+    // Glowing empty
+    grid[eyeY][8] = 5; grid[eyeY][9] = 5;
+    grid[eyeY - 1][8] = 5; grid[eyeY - 1][9] = 5;
+  }
+
+  // ═══════════════════════════════════════════════
+  //  6. MOUTH
+  // ═══════════════════════════════════════════════
+  if (mouthType === 0) {
+    // Smile
+    grid[12][9] = 0; grid[12][10] = 0;
+    grid[13][10] = 2;
+  } else if (mouthType === 1) {
+    // Frown
+    grid[12][9] = 0; grid[12][10] = 0;
+    grid[11][10] = 2;
+  } else {
+    // Open mouth (O-shape)
+    grid[12][9] = 0; grid[12][10] = 0;
+    grid[13][9] = 0; grid[13][10] = 0;
+  }
+
+  // ═══════════════════════════════════════════════
+  //  7. TAIL (on left side BEFORE mirror — mirror will produce the right side)
+  // ═══════════════════════════════════════════════
+  // Tail coordinates are specified on the RIGHT side (x>=12).
+  // We place them on the LEFT side (x = 23 - right_x) so mirror creates both sides.
+  if (tailType === 1) {
+    // Curly tail
+    grid[15][2] = 2; grid[14][1] = 3; grid[15][1] = 2;
+    grid[14][0] = 3; grid[15][0] = 2;
+  } else if (tailType === 2) {
+    // Spiky tail
+    grid[14][1] = 2; grid[13][0] = 3;
+    grid[15][1] = 2; grid[16][0] = 3;
+  } else if (tailType === 3) {
+    // Fluffy tail
+    grid[14][2] = 2; grid[13][1] = 3; grid[14][1] = 3;
+    grid[15][2] = 2; grid[15][1] = 2;
+    grid[14][0] = 3; grid[15][0] = 2;
+  }
+
+  // ═══════════════════════════════════════════════
+  //  8. MIRROR LEFT → RIGHT
+  // ═══════════════════════════════════════════════
+  for (let y = 0; y < 24; y++) {
+    for (let x = 0; x < 12; x++) {
+      grid[y][23 - x] = grid[y][x];
+    }
+  }
+
+  // ═══════════════════════════════════════════════
+  //  10. OUTLINES
+  // ═══════════════════════════════════════════════
+  const finalGrid: number[][] = Array.from({ length: 24 }, () => Array(24).fill(0));
+
+  for (let y = 0; y < 24; y++) {
+    for (let x = 0; x < 24; x++) {
+      const cell = grid[y][x];
+      if (cell > 0) {
+        finalGrid[y][x] = cell;
+      } else {
+        // Check 4-direction neighbors
+        for (const [ny, nx] of [[y - 1, x], [y + 1, x], [y, x - 1], [y, x + 1]]) {
+          if (ny >= 0 && ny < 24 && nx >= 0 && nx < 24 && grid[ny][nx] > 0) {
+            finalGrid[y][x] = 1;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // ═══════════════════════════════════════════════
+  //  11. APPLY PATTERNS (left half only, then re-mirror to preserve symmetry)
+  // ═══════════════════════════════════════════════
+  for (let y = 0; y < 24; y++) {
+    for (let x = 0; x < 12; x++) {
+      if (finalGrid[y][x] === 2 && patternType === 1 && (Math.floor(y / 2) % 2 === 0)) {
+        finalGrid[y][x] = 4;
+      }
+      if (finalGrid[y][x] === 2 && patternType === 2 && (y % 3 === 0 && x % 3 === 0)) {
+        finalGrid[y][x] = 4;
+      }
+      if (finalGrid[y][x] === 2 && patternType === 3 && ((y + x) % 4 < 2)) {
+        finalGrid[y][x] = 3;
+      }
+    }
+  }
+  // Re-mirror left half pattern changes to right half
+  for (let y = 0; y < 24; y++) {
+    for (let x = 0; x < 12; x++) {
+      finalGrid[y][23 - x] = finalGrid[y][x];
+    }
+  }
+
+  return {
+    grid: finalGrid,
+    palette,
+    paletteName,
+    eyesType,
+    blinkState,
+    mouthType,
+  };
+}
+
+/**
+ * Render a sprite grid onto a canvas with integer-only pixel rendering.
+ * All offsets are Math.floor'd to prevent sub-pixel anti-aliasing artifacts.
+ */
+export function drawSpriteOnCanvas(
+  ctx: CanvasRenderingContext2D,
+  sprite: SpriteResult,
+  ox: number, oy: number,
+  pixelSize: number,
+  frame: number,
+) {
+  const { grid, palette } = sprite;
+  const [outlineColor, bodyColor, lightColor, accentColor] = palette;
+
+  // ── Breathing animation (integer offsets only) ──
+  const breathSin = Math.sin(frame * 0.2);
+  // Floor to integer pixels — prevents sub-pixel anti-aliasing
+  const breathOffset = Math.floor(breathSin * 0.4);
+
+  ctx.imageSmoothingEnabled = false;
+
+  for (let y = 0; y < 24; y++) {
+    // dy is only applied to upper body (y < 17)
+    const dy = y < 17 ? breathOffset : 0;
+
+    for (let x = 0; x < 24; x++) {
+      const cell = grid[y][x];
+      if (cell === 0) continue;
+
+      // Determine fill color
+      let color: string;
+      switch (cell) {
+        case 1: color = outlineColor; break;
+        case 2: color = bodyColor; break;
+        case 3: color = lightColor; break;
+        case 4: color = accentColor; break;
+        case 5: color = accentColor; break;  // glow = accent color (no pulsing)
+        default: color = outlineColor;
+      }
+
+      ctx.fillStyle = color;
+      ctx.fillRect(
+        ox + (x * pixelSize),
+        oy + (y * pixelSize) + dy,
+        pixelSize,
+        pixelSize,
+      );
+    }
+  }
+}
+
+
 /**
  * Procedural generation of a retro 8-bit pocket monster on a canvas.
  * Draws a symmetrical sprite.
@@ -32,7 +401,7 @@ export function drawProceduralMon(
   canvas: HTMLCanvasElement,
   seed: string,
   frame: number,
-  colorTheme: 'dmg' | 'pocket' = 'dmg'
+  colorTheme?: PaletteName,
 ) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
@@ -41,158 +410,11 @@ export function drawProceduralMon(
   const height = canvas.height;
   ctx.clearRect(0, 0, width, height);
 
-  const hash = getSeedHash(seed);
-  const lcg = new LCG(hash);
-
-  // Palette selectors
-  // DMG classic screen palette (4 shades of retro olive/grey)
-  const ditherPalette = {
-    dmg: ['#1a1a1a', '#7f001c', '#e2dfde', '#ffffff'], // DMG console-theme styled pocket style (Charcoal, PrimaryRed, LightGray, White)
-    pocket: ['#0f172a', '#475569', '#94a3b8', '#f8fafc'] // Pocket grey style
-  };
-
-  const colors = ditherPalette[colorTheme] || ditherPalette.dmg;
-
-  // Render variables
-  const gridSize = 12; // Half width is 12 (mirrored to 24)
-  const pixelSize = Math.floor(width / 24); // Fits 24x24 canvas perfectly
+  const pixelSize = Math.floor(width / 24);
   const startX = Math.floor((width - (24 * pixelSize)) / 2);
   const startY = Math.floor((height - (24 * pixelSize)) / 2);
-
-  // Animation breathing variables
-  const breathOffset = Math.sin(frame * 0.2) * 0.4;
-
-  const pixelGrid: number[][] = Array(24).fill(0).map(() => Array(24).fill(0));
-
-  // Determine monster anatomy types from seed
-  const limbsType = lcg.nextRange(0, 3);
-  const eyesType = lcg.nextRange(0, 3);
-  const hornsType = lcg.nextRange(0, 4);
-
-  // Fill horizontal symmetry half (x from 0 to 11)
-  // Inside a 24x24 grid, let's define core body around center (y: 6 to 18, x: 2 to 11)
-  for (let y = 4; y < 20; y++) {
-    for (let x = 3; x < 12; x++) {
-      // Create body blobs
-      let fillType = 0; // 0: empty, 1: outline, 2: dark color, 3: accent color
-
-      // Core body chance increases near x = 11 down to 5
-      const bodyWidthBound = 11 - Math.abs(12 - y) * 0.5;
-      if (x <= 11 && x >= 11 - Math.floor(lcg.next() * 5 + 3)) {
-        if (y >= 7 && y <= 16) {
-          fillType = lcg.next() > 0.35 ? 2 : 3;
-        }
-      }
-
-      // Add Horns / Ears
-      if (hornsType === 0 && y >= 4 && y <= 6 && x >= 8 && x < 11) {
-        // Bunny ears / sharp horns
-        fillType = 2;
-      } else if (hornsType === 1 && y === 5 && x >= 5 && x <= 8) {
-        // Wing horns
-        fillType = 3;
-      } else if (hornsType === 2 && y >= 3 && y <= 5 && x === 10) {
-        // Unicorn single middle horn (x closer to mirroring)
-        fillType = 3;
-      }
-
-      // Add Arms / Limbs
-      if (limbsType === 0 && y >= 11 && y <= 13 && x >= 3 && x <= 6) {
-        // Short stubby arms
-        fillType = 2;
-      } else if (limbsType === 1 && y >= 14 && y <= 15 && x >= 2 && x <= 5) {
-        // Long drop claws
-        fillType = 3;
-      }
-
-      // Add Feet / Legs
-      if (y >= 17 && y <= 18 && x >= 6 && x <= 10) {
-        fillType = 2; // steady stance feet
-      }
-
-      pixelGrid[y][x] = fillType;
-    }
-  }
-
-  // Draw Eyes & Mouth (near the center axis, mapped onto grid)
-  // Eye x-pos around 8, y-pos around 9
-  if (eyesType === 0) {
-    // Large round eyes
-    pixelGrid[9][8] = 3;
-    pixelGrid[10][8] = 0; // eye detail
-    pixelGrid[9][9] = 3;
-  } else if (eyesType === 1) {
-    // Intense horizontal strip eye
-    pixelGrid[9][7] = 3;
-    pixelGrid[9][8] = 3;
-    pixelGrid[9][9] = 3;
-  } else {
-    // Angry eyes
-    pixelGrid[8][7] = 3;
-    pixelGrid[9][8] = 3;
-    pixelGrid[9][9] = 3;
-  }
-
-  // Mouth around y = 12, x = 10,11
-  pixelGrid[12][10] = 0; // mouth gap
-  pixelGrid[13][11] = 2; // chin indent
-
-  // Mirror grid onto the right half (x = 12 to 23)
-  for (let y = 0; y < 24; y++) {
-    for (let x = 0; x < 12; x++) {
-      pixelGrid[y][23 - x] = pixelGrid[y][x];
-    }
-  }
-
-  // Create clean outlines around filled pixels
-  const finalGrid: number[][] = Array(24).fill(0).map(() => Array(24).fill(0));
-  for (let y = 0; y < 24; y++) {
-    for (let x = 0; x < 24; x++) {
-      const current = pixelGrid[y][x];
-      if (current > 0) {
-        finalGrid[y][x] = current;
-      } else {
-        // Check if adjacent is filled (generating a flat black outline)
-        let hasFilledNeighbor = false;
-        const neighbors = [
-          [y - 1, x], [y + 1, x], [y, x - 1], [y, x + 1]
-        ];
-        for (const [ny, nx] of neighbors) {
-          if (ny >= 0 && ny < 24 && nx >= 0 && nx < 24) {
-            if (pixelGrid[ny][nx] > 0) {
-              hasFilledNeighbor = true;
-              break;
-            }
-          }
-        }
-        if (hasFilledNeighbor) {
-          finalGrid[y][x] = 1; // Mark outline
-        }
-      }
-    }
-  }
-
-  // Now, render final grid onto Canvas
-  for (let y = 0; y < 24; y++) {
-    for (let x = 0; x < 24; x++) {
-      const cell = finalGrid[y][x];
-      if (cell === 0) continue; // transparent space
-
-      // Apply animated breathing translation to body elements (anything not the ground-level feet)
-      let dy = 0;
-      if (y < 17) {
-        dy = breathOffset; // subtle bob
-      }
-
-      ctx.fillStyle = cell === 1 ? colors[0] : cell === 2 ? colors[1] : colors[2];
-      ctx.fillRect(
-        startX + x * pixelSize,
-        startY + y * pixelSize + dy,
-        pixelSize,
-        pixelSize
-      );
-    }
-  }
+  const sprite = buildSpriteGrid(seed, frame, colorTheme);
+  drawSpriteOnCanvas(ctx, sprite, startX, startY, pixelSize, frame);
 }
 
 /**

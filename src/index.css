@@ -21,82 +21,69 @@ button, select, input, [role="button"], a, .cursor-pointer, .pixel-trigger {
   cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32' style='image-rendering:pixelated;'><path d='M10,2 L14,2 L14,10 L18,10 L18,8 L22,8 L22,10 L26,10 L26,12 L30,12 L30,18 L26,24 L16,24 L10,18 Z' fill='%23fb7185' stroke='%23000000' stroke-width='2.5' stroke-linejoin='round'/></svg>") 12 2, pointer !important;
 }
 
-/* Console Shell Texture */
-.console-shell {
-  background-color: #d1d5db; /* Classic grey */
-  border-radius: 12px 12px 48px 12px;
-  box-shadow: 
-      inset -6px -6px 18px rgba(0,0,0,0.12),
-      inset 6px 6px 18px rgba(255,255,255,0.85),
-      12px 12px 24px rgba(0,0,0,0.25);
-  border: 3px solid #9ca3af;
+/* Gittendo Advanced SP — Top Shell */
+.sp-top-half {
+  background-color: #cbd5e1;
+  box-shadow:
+    inset -4px -4px 10px rgba(0,0,0,0.12),
+    inset 4px 4px 10px rgba(255,255,255,0.7),
+    6px 6px 18px rgba(0,0,0,0.25);
+  border: 2px solid #94a3b8;
 }
 
-/* Screen Lens/Bezel */
-.screen-lens {
-  background-color: #374151; /* Dark grey bezel */
-  border-radius: 12px 12px 32px 12px;
-  box-shadow: inset 3px 3px 6px rgba(0,0,0,0.45), 0 2px 4px rgba(0,0,0,0.2);
-  border: 3px solid #1f2937;
+/* Screen Bezel (SP-style dark frame) */
+.screen-bezel {
+  background-color: #374151;
+  box-shadow: inset 2px 2px 6px rgba(0,0,0,0.45), 0 1px 3px rgba(0,0,0,0.2);
+  border: 2px solid #1f2937;
 }
 
-/* The actual retro screen */
-.game-screen {
-  background-color: #f3f3f3; /* off-white or soft warm grey */
-  box-shadow: inset 3px 3px 6px rgba(0,0,0,0.25);
+/* The actual retro screen (SP version) */
+.game-screen-sp {
+  background-color: #f3f3f3;
+  box-shadow: inset 2px 2px 4px rgba(0,0,0,0.2);
   background-image: repeating-linear-gradient(
       0deg,
-      rgba(0,0,0,0.02) 0px,
-      rgba(0,0,0,0.02) 1px,
+      rgba(0,0,0,0.015) 0px,
+      rgba(0,0,0,0.015) 1px,
       transparent 1px,
       transparent 2px
   );
+  border: 2px solid #1a1a1a;
 }
 
-/* Hardware buttons */
-.d-pad {
-  background-color: #1f2937;
-  box-shadow: 
-    inset 1px 1px 2px rgba(255,255,255,0.2), 
-    inset -1px -1px 2px rgba(0,0,0,0.5), 
-    3px 3px 6px rgba(0,0,0,0.4);
+/* Hinge connecting top and bottom shells */
+.sp-hinge {
+  background-color: #9ca3af;
+  border-radius: 9999px;
+  box-shadow:
+    inset 0px 2px 4px rgba(0,0,0,0.25),
+    0px 4px 4px rgba(0,0,0,0.15);
+  border: 1px solid #6b7280;
 }
 
-.d-pad-vertical, .d-pad-horizontal {
-  background-color: #1f2937;
+/* Gittendo Advanced SP — Bottom Shell (Controls) */
+.sp-bottom-half {
+  background-color: #cbd5e1;
+  box-shadow:
+    inset -4px -4px 10px rgba(0,0,0,0.12),
+    inset 4px 4px 10px rgba(255,255,255,0.7),
+    4px 10px 20px rgba(0,0,0,0.3);
+  border: 2px solid #94a3b8;
 }
 
-.action-button {
-  background: radial-gradient(circle at 30% 30%, #b42b4b, #7f001c);
-  box-shadow: 
-      inset 1.5px 1.5px 3px rgba(255,255,255,0.35),
-      inset -1.5px -1.5px 3px rgba(0,0,0,0.45),
-      3px 3px 5px rgba(0,0,0,0.5);
-  border: 1.5px solid #4a041c;
-  transition: transform 0.05s ease, box-shadow 0.05s ease;
+/* Custom Retro Scrollbar inside SP Game Screen Viewport */
+.game-screen-sp ::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
 }
-
-.action-button:active, .action-button.pressed {
-  box-shadow: 
-      inset 2px 2px 4px rgba(0,0,0,0.6),
-      0px 0px 0px rgba(0,0,0,0);
-  transform: translate(1.5px, 1.5px);
+.game-screen-sp ::-webkit-scrollbar-track {
+  background: #f5f5f5;
+  border-left: 1.5px dashed #1a1a1a;
 }
-
-.pill-button {
-  background-color: #4b5563;
-  box-shadow: 
-      inset 1px 1px 2px rgba(255,255,255,0.2),
-      inset -1px -1px 2px rgba(0,0,0,0.45),
-      2px 2px 3px rgba(0,0,0,0.35);
-  border-radius: 12px;
-  transform: rotate(-22deg);
-  transition: transform 0.05s ease, box-shadow 0.05s ease;
-}
-
-.pill-button:active, .pill-button.pressed {
-  box-shadow: inset 2px 2px 4px rgba(0,0,0,0.6);
-  transform: rotate(-22deg) translate(1px, 1px);
+.game-screen-sp ::-webkit-scrollbar-thumb {
+  background: #7f001c;
+  border: 1px solid #1a1a1a;
 }
 
 .retro-input {
@@ -160,20 +147,6 @@ button, select, input, [role="button"], a, .cursor-pointer, .pixel-trigger {
   background-image: radial-gradient(rgba(0,0,0,0.06) 1px, transparent 1px);
   background-size: 3px 3px;
   opacity: 0.85;
-}
-
-/* Custom Retro Scrollbar inside Gameboy Screen Viewport */
-.game-screen ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-.game-screen ::-webkit-scrollbar-track {
-  background: #f5f5f5;
-  border-left: 1.5px dashed #1a1a1a;
-}
-.game-screen ::-webkit-scrollbar-thumb {
-  background: #7f001c;
-  border: 1px solid #1a1a1a;
 }
 
 /* Boot animation styles */
@@ -309,6 +282,63 @@ button, select, input, [role="button"], a, .cursor-pointer, .pixel-trigger {
 
 .animate-view-exit {
   animation: view-exit 0.16s ease-in forwards;
+}
+
+/* Console becomes tappable to expand after boot focus */
+.console-zoomable {
+  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32' style='image-rendering:pixelated;'><path d='M14,6 L14,14 L6,14 L6,18 L14,18 L14,26 L18,26 L18,18 L26,18 L26,14 L18,14 L18,6 Z' fill='%23a3e635' stroke='%23000000' stroke-width='2.5' stroke-linejoin='round'/></svg>") 16 16, zoom-in;
+}
+
+/* Camera rack-focus zoom-in on boot complete */
+@keyframes camera-focus {
+  0% {
+    transform: scale(0.88);
+    filter: blur(6px);
+    opacity: 0.3;
+  }
+  30% {
+    filter: blur(3px);
+    opacity: 0.7;
+  }
+  60% {
+    transform: scale(1.02);
+    filter: blur(0px);
+    opacity: 1;
+  }
+  80% {
+    transform: scale(0.99);
+  }
+  100% {
+    transform: scale(1);
+    filter: blur(0px);
+    opacity: 1;
+  }
+}
+
+.animate-camera-focus {
+  animation: camera-focus 0.8s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+/* Ripple click feedback */
+@keyframes ripple-effect {
+  0% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+.ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+  animation: ripple-effect 0.5s ease-out forwards;
 }
 
 /* Pixel Dust Particles */
