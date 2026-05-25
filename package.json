@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build && mv dist/index.html dist/shell.html",
-    "deploy": "npm run build && npx wrangler deploy",
+    "build": "vite build && mv dist/index.html dist/shell.html && node scripts/inline-shell.cjs",
+    "deploy": "npm run build && npx wrangler deploy --assets dist",
+    "deploy:staging": "npm run build && npx wrangler deploy --assets dist --env staging",
+    "deploy:prod": "npm run build && npx wrangler deploy --assets dist",
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",

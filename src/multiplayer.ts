@@ -15,13 +15,13 @@ interface GameServerState {
 export class GameServer implements DurableObject {
   private sessions: Map<WebSocket, { username: string; mon: any; status: string; roomId: string | null; pNumber: number }>;
   private rooms: Map<string, RoomState>;
+  /** In-memory cache of players waiting for matchmaking (alarm will spawn AI bot after timeout) */
+  private pendingMatchmaking: { username: string; startTime: number }[] = [];
   private ctx: DurableObjectState;
-  private storage: DurableObjectStorage;
   private env: Env;
 
   constructor(ctx: DurableObjectState, env: Env) {
     this.ctx = ctx;
-    this.storage = ctx.storage;
     this.env = env;
     this.sessions = new Map();
     this.rooms = new Map();
@@ -82,6 +82,10 @@ export class GameServer implements DurableObject {
           }
 
           if (matchOpponent) {
+            // Matched! Remove both from pending queue and create room.
+            await this.removeFromMatchmakingQueue(session.username);
+            await this.removeFromMatchmakingQueue(matchOpponent.username);
+
             const roomId = `pvp_room_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
             session.status = 'battling';
             session.roomId = roomId;
@@ -103,40 +107,17 @@ export class GameServer implements DurableObject {
             matchOpponent.ws.send(JSON.stringify({ type: 'match_found', roomId, pNumber: 2, opponent: session.mon, opponentName: session.username, isAi: false }));
             this.broadcastLobbyUpdate();
           } else {
-            // After 4.5s, fallback to AI bot
-            const timeoutId = setTimeout(() => {
-              if (session.status === 'searching') {
-                const botMon = RETRO_BOTS[Math.floor(Math.random() * RETRO_BOTS.length)];
-                const roomId = `pvp_room_bot_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-                session.status = 'battling';
-                session.roomId = roomId;
-                session.pNumber = 1;
-
-                const room: RoomState = {
-                  roomId,
-                  isAiMatch: true,
-                  p1: { username: session.username, mon: session.mon, hp: Math.max(session.mon.stats.hp, 50), maxHp: Math.max(session.mon.stats.hp, 50), ws, action: null },
-                  p2: { username: botMon.username, mon: botMon, hp: botMon.stats.hp, maxHp: botMon.stats.hp, ws: null, action: null },
-                  turn: 1,
-                };
-                this.rooms.set(roomId, room);
-
-                ws.send(JSON.stringify({ type: 'match_found', roomId, pNumber: 1, opponent: botMon, opponentName: botMon.username, isAi: true }));
-                this.broadcastLobbyUpdate();
-              }
-            }, 4500);
-            // Store timeout ID
-            (session as any).matchmakingTimeout = timeoutId;
+            // No immediate match — queue for alarm-based AI bot fallback (4.5s timeout)
+            this.pendingMatchmaking.push({ username: session.username, startTime: Date.now() });
+            await this.persistMatchmakingQueue();
+            await this.scheduleNextAlarm();
           }
           break;
         }
 
         case 'cancel_searching': {
           session.status = 'idle';
-          if ((session as any).matchmakingTimeout) {
-            clearTimeout((session as any).matchmakingTimeout);
-            (session as any).matchmakingTimeout = null;
-          }
+          await this.removeFromMatchmakingQueue(session.username);
           this.broadcastLobbyUpdate();
           break;
         }
@@ -180,8 +161,107 @@ export class GameServer implements DurableObject {
       const room = this.rooms.get(session.roomId);
       if (room) this.handleForfeit(room, session.pNumber);
     }
-    if ((session as any)?.matchmakingTimeout) clearTimeout((session as any).matchmakingTimeout);
+    if (session?.username) await this.removeFromMatchmakingQueue(session.username);
     this.sessions.delete(ws);
+    this.broadcastLobbyUpdate();
+  }
+
+  // ======== Alarm-Based Matchmaking Timeout ========
+
+  /**
+   * Fired by the DO runtime when the alarm time is reached.
+   * Processes expired matchmaking entries and spawns AI bots.
+   */
+  async alarm(): Promise<void> {
+    const queue = await this.loadMatchmakingQueue();
+    if (queue.length === 0) return;
+
+    const now = Date.now();
+    const remaining: { username: string; startTime: number }[] = [];
+    let needsReschedule = false;
+
+    for (const entry of queue) {
+      if (now - entry.startTime >= 4500) {
+        // Entry expired — check if the player is still searching
+        for (const [ws, session] of this.sessions) {
+          if (session.username === entry.username && session.status === 'searching') {
+            this.spawnAiBotForSession(ws, session);
+            break;
+          }
+        }
+        // Remove from in-memory cache
+        this.pendingMatchmaking = this.pendingMatchmaking.filter(p => p.username !== entry.username);
+        needsReschedule = true;
+      } else {
+        remaining.push(entry);
+      }
+    }
+
+    if (remaining.length > 0) {
+      await this.ctx.storage.put('matchmaking_queue', remaining);
+      this.pendingMatchmaking = remaining;
+      // Set next alarm for the earliest remaining timeout
+      const nextAlarm = remaining[0].startTime + 4500;
+      await this.ctx.storage.setAlarm(nextAlarm);
+    } else {
+      await this.ctx.storage.delete('matchmaking_queue');
+    }
+  }
+
+  /** Schedule the alarm for the earliest pending matchmaking timeout. */
+  private async scheduleNextAlarm(): Promise<void> {
+    if (this.pendingMatchmaking.length === 0) return;
+    const earliest = Math.min(...this.pendingMatchmaking.map(p => p.startTime)) + 4500;
+    await this.ctx.storage.setAlarm(earliest);
+  }
+
+  /** Remove a player from the matchmaking queue and reschedule the alarm. */
+  private async removeFromMatchmakingQueue(username: string): Promise<void> {
+    const before = this.pendingMatchmaking.length;
+    this.pendingMatchmaking = this.pendingMatchmaking.filter(p => p.username !== username);
+    if (this.pendingMatchmaking.length === before) return; // wasn't in queue
+
+    if (this.pendingMatchmaking.length > 0) {
+      await this.persistMatchmakingQueue();
+      await this.scheduleNextAlarm();
+    } else {
+      await this.ctx.storage.delete('matchmaking_queue');
+      await this.ctx.storage.deleteAlarm();
+    }
+  }
+
+  /** Persist the in-memory queue to DO storage. */
+  private async persistMatchmakingQueue(): Promise<void> {
+    await this.ctx.storage.put('matchmaking_queue', this.pendingMatchmaking);
+  }
+
+  /** Load the queue from DO storage. */
+  private async loadMatchmakingQueue(): Promise<{ username: string; startTime: number }[]> {
+    const queue = await this.ctx.storage.get<{ username: string; startTime: number }[]>('matchmaking_queue');
+    return queue || [];
+  }
+
+  /** Spawn an AI bot opponent for a player whose matchmaking timed out. */
+  private spawnAiBotForSession(
+    ws: WebSocket,
+    session: { username: string; mon: any; status: string; roomId: string | null; pNumber: number }
+  ): void {
+    const botMon = RETRO_BOTS[Math.floor(Math.random() * RETRO_BOTS.length)];
+    const roomId = `pvp_room_bot_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    session.status = 'battling';
+    session.roomId = roomId;
+    session.pNumber = 1;
+
+    const room: RoomState = {
+      roomId,
+      isAiMatch: true,
+      p1: { username: session.username, mon: session.mon, hp: Math.max(session.mon.stats.hp, 50), maxHp: Math.max(session.mon.stats.hp, 50), ws, action: null },
+      p2: { username: botMon.username, mon: botMon, hp: botMon.stats.hp, maxHp: botMon.stats.hp, ws: null, action: null },
+      turn: 1,
+    };
+    this.rooms.set(roomId, room);
+
+    ws.send(JSON.stringify({ type: 'match_found', roomId, pNumber: 1, opponent: botMon, opponentName: botMon.username, isAi: true }));
     this.broadcastLobbyUpdate();
   }
 

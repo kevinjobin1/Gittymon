@@ -3,6 +3,7 @@ import { lookupSummonCache, addToSummonCache } from './summonCache';
 import { generateSvgCard, generateGifCard } from './embed';
 import { GameServer } from './multiplayer';
 import { Env, RoastMon, GithubData } from './types';
+import { SHELL_HTML } from './shellHtml';
 
 export { GameServer };
 
@@ -90,27 +91,21 @@ export default {
 
       // ---- SPA Routes & Root (with OG injection) ----
       // Paths without file extensions are SPA routes
+      // Files with extensions that reach the worker don't exist in assets — return 404
       const hasFileExtension = path.includes('.') && !path.endsWith('/');
       if (hasFileExtension && path !== '/') {
-        // Try static assets
-        return env.ASSETS.fetch(request);
+        return new Response('Not Found', { status: 404 });
       }
 
       // SPA fallback: serve index.html with OG tag injection
-      const assetResponse = await env.ASSETS.fetch(new URL('/shell.html', url).toString());
-      if (assetResponse.ok) {
-        let html = await assetResponse.text();
-        const absOrigin = origin;
-        html = html
-          .replace('<!-- OG_URL_INJECTED_BY_SERVER -->', `<meta property="og:url" content="${absOrigin}/">`)
-          .replace('<!-- OG_IMAGE_INJECTED_BY_SERVER -->', `<meta property="og:image" content="${absOrigin}/social-preview.png">`)
-          .replace('<!-- TWITTER_IMAGE_INJECTED_BY_SERVER -->', `<meta name="twitter:image" content="${absOrigin}/social-preview.png">`);
-        return new Response(html, {
-          headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' },
-        });
-      }
-
-      return assetResponse;
+      const absOrigin = origin;
+      const html = SHELL_HTML
+        .replace('<!-- OG_URL_INJECTED_BY_SERVER -->', `<meta property="og:url" content="${absOrigin}/">`)
+        .replace('<!-- OG_IMAGE_INJECTED_BY_SERVER -->', `<meta property="og:image" content="${absOrigin}/social-preview.png">`)
+        .replace('<!-- TWITTER_IMAGE_INJECTED_BY_SERVER -->', `<meta name="twitter:image" content="${absOrigin}/social-preview.png">`);
+      return new Response(html, {
+        headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' },
+      });
 
     } catch (err: any) {
       console.error('Worker error:', err);

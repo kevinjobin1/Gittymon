@@ -20,5 +20,29 @@ migrations = [
   { tag = "v1", new_sqlite_classes = ["GameServer"] }
 ]
 
+# ---- Production (default) ----
+# Deploy with: wrangler deploy --assets dist
+# URL: https://gittymon.kevin-jobin-1.workers.dev
+
+# ---- Staging ----
+[env.staging]
+name = "gittymon-staging"
+
+kv_namespaces = [
+  { binding = "LEADERBOARD", id = "8a54d067f8294b05b3085910a5fa4efc" },
+  { binding = "SUMMON_CACHE", id = "871713405d864325bc5e65d6d9525069" }
+]
+
+durable_objects = { bindings = [
+  { name = "GAME_SERVER", class_name = "GameServer" }
+] }
+
+migrations = [
+  { tag = "v1", new_sqlite_classes = ["GameServer"] }
+]
+
+[env.staging.observability]
+enabled = true
+
 [observability]
 enabled = true
