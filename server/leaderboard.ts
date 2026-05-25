@@ -113,8 +113,8 @@ export function recordMatchResult(
   const loseEntry = getOrCreateEntry(loser.username, loser.monName, loser.level, loser.avatarUrl);
   loseEntry.losses += 1;
 
-  // Sort leaderboard by wins descending, then level descending
-  leaderboard.sort((a, b) => b.wins - a.wins || b.level - a.level);
+  // Sort leaderboard by net wins (wins - losses) descending, then level descending
+  leaderboard.sort((a, b) => (b.wins - b.losses) - (a.wins - a.losses) || b.level - a.level);
 
   // Truncate to top 50
   const topLeaderboard = leaderboard.slice(0, 50);

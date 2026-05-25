@@ -55,7 +55,7 @@ export async function recordMatchResult(
   const loseEntry = getOrCreateEntry(loser.username, loser.monName, loser.level, loser.avatarUrl);
   loseEntry.losses += 1;
 
-  leaderboard.sort((a, b) => b.wins - a.wins || b.level - a.level);
+  leaderboard.sort((a, b) => (b.wins - b.losses) - (a.wins - a.losses) || b.level - a.level);
   const top = leaderboard.slice(0, 50);
   await saveLeaderboard(kv, top);
   return top;
