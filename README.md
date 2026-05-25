@@ -34,9 +34,7 @@
 ### 📸 Flow Screenshots
 
 <p align="center">
-  <img src="screenshot-splash.png" alt="1. Splash & Enter Username" width="30%" style="border-radius: 8px; border: 2px solid #1a1a1a; display: inline-block;" />
-  <img src="screenshot-input.png" alt="2. GitHub username entered" width="30%" style="border-radius: 8px; border: 2px solid #1a1a1a; display: inline-block; margin-left: 8px;" />
-  <img src="screenshot-result.png" alt="3. Summoned monster result" width="30%" style="border-radius: 8px; border: 2px solid #1a1a1a; display: inline-block; margin-left: 8px;" />
+  <img src="screencast.gif" alt="1. Splash & Enter Username" width="30%" style="border-radius: 8px; border: 2px solid #1a1a1a; display: inline-block;" />
   <br />
   <em>1. Enter a GitHub username → 2. Press SUMMON → 3. Get your Roast-mon!</em>
 </p>
