@@ -178,7 +178,6 @@ export class GameServer implements DurableObject {
 
     const now = Date.now();
     const remaining: { username: string; startTime: number }[] = [];
-    let needsReschedule = false;
 
     for (const entry of queue) {
       if (now - entry.startTime >= 4500) {
@@ -191,7 +190,6 @@ export class GameServer implements DurableObject {
         }
         // Remove from in-memory cache
         this.pendingMatchmaking = this.pendingMatchmaking.filter(p => p.username !== entry.username);
-        needsReschedule = true;
       } else {
         remaining.push(entry);
       }

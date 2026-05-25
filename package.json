@@ -12,8 +12,9 @@
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "deploy": "npm run build && wrangler deploy",
-    "preview": "npm run build && wrangler dev"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "preview": "npm run build && wrangler dev",
     "worker:dev": "npx wrangler dev"
   },
   "dependencies": {
@@ -43,6 +44,7 @@
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.3",
+    "vitest": "^4.1.7",
     "wrangler": "^4.94.0"
   }
 }
