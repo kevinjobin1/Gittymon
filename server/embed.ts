@@ -109,7 +109,7 @@ function wrapText(text: string, maxLen: number): string[] {
 }
 
 export function generateSvgCard(username: string): string {
-  const cleanUsername = username.trim().replace(/[^a-zA-Z0-9-]/g, '');
+  const cleanUsername = (username.trim().replace(/[^a-zA-Z0-9-]/g, '')) || 'x';
 
   const leaderboard = loadLeaderboard();
   const entry = leaderboard.find(e => e.username.toLowerCase() === cleanUsername.toLowerCase());
@@ -625,7 +625,7 @@ function wrapTextToLength(text: string, maxLen: number): string[] {
 }
 
 export function generateGifCard(username: string): Buffer {
-  const cleanUsername = username.trim().replace(/[^a-zA-Z0-9-]/g, '');
+  const cleanUsername = (username.trim().replace(/[^a-zA-Z0-9-]/g, '')) || 'x';
 
   const leaderboard = loadLeaderboard();
   const entry = leaderboard.find(e => e.username.toLowerCase() === cleanUsername.toLowerCase());
@@ -690,7 +690,6 @@ export function generateGifCard(username: string): Buffer {
     [250, 204, 21],  // 19: Gold
   ];
 
-  const flatPalette = PALETTE.flat();
   const gif = createGIFEncoder();
 
   const NUM_FRAMES = 16;
@@ -872,7 +871,7 @@ export function generateGifCard(username: string): Buffer {
     });
 
     gif.writeFrame(canvas.pixels, W, H, {
-      palette: flatPalette,
+      palette: PALETTE,
       delay: 100
     });
   }

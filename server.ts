@@ -704,25 +704,41 @@ async function startServer() {
       );
   }
 
+  let viteDevServer: Awaited<ReturnType<typeof createViteServer>> | null = null;
+
+  if (process.env.NODE_ENV !== 'production') {
+    viteDevServer = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'spa',
+    });
+  }
+
   // Inject dynamic absolute og:url for the root page
-  app.get('/', (req, res) => {
+  // NOTE: registered BEFORE Vite middleware so OUR handler runs first for '/'
+  // We call viteDevServer.transformIndexHtml() ourselves to inject the React refresh preamble
+  app.get('/', async (req, res) => {
     const htmlPath = process.env.NODE_ENV !== 'production'
       ? path.join(process.cwd(), 'index.html')
       : path.join(process.cwd(), 'dist', 'index.html');
     let html = fs.readFileSync(htmlPath, 'utf-8');
+
+    // In dev, run through Vite's HTML transform pipeline to inject React refresh preamble etc.
+    if (viteDevServer) {
+      html = await viteDevServer.transformIndexHtml(req.url, html);
+    }
+
     html = injectAbsoluteMeta(html, req);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache');
     res.send(html);
   });
 
-  if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
+  // Mount Vite middleware AFTER our root handler so it handles other routes (.ts, .tsx, etc.)
+  if (process.env.NODE_ENV !== 'production' && viteDevServer) {
+    app.use(viteDevServer.middlewares);
+  }
+
+  if (process.env.NODE_ENV === 'production') {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {

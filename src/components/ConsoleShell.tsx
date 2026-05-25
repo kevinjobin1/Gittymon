@@ -195,7 +195,7 @@ export function ConsoleShell({
       <BackgroundMap />
 
       {/* Outer physical console chassis shell */}
-      <div className="console-shell w-[350px] sm:w-[395px] h-[670px] sm:h-[735px] p-4 sm:p-5 flex flex-col relative select-none z-10">
+      <div className="console-shell w-[400px] sm:w-[460px] h-[760px] sm:h-[840px] p-4 sm:p-5 flex flex-col relative select-none z-10">
         
         {/* Top visual detail notches */}
         <div className="absolute top-4 left-4 right-4 flex justify-between px-2">
@@ -204,7 +204,7 @@ export function ConsoleShell({
         </div>
 
         {/* Gray screen lens border bezel */}
-        <div className="screen-lens w-full h-[330px] sm:h-[370px] mt-4 sm:mt-5 p-3 sm:p-4 flex flex-col items-center justify-center relative">
+        <div className="screen-lens w-full h-[380px] sm:h-[430px] mt-4 sm:mt-5 p-3 sm:p-4 flex flex-col items-center justify-center relative">
           
           {/* Lens horizontal structural details */}
           <div className="w-full h-5 flex justify-between items-center mb-1.5 px-1 sm:px-2">
@@ -240,7 +240,7 @@ export function ConsoleShell({
           </div>
 
           {/* Active Liquid Crystal Screen */}
-          <div className="game-screen w-full h-[260px] sm:h-[295px] border-4 border-[#1a1a1a] relative overflow-hidden flex flex-col p-2 bg-[#f5f5f5]">
+          <div className="game-screen w-full h-[310px] sm:h-[345px] border-4 border-[#1a1a1a] relative overflow-hidden flex flex-col p-2 bg-[#f5f5f5]">
             {/* Ambient scanlines simulation overlays if desired */}
             <div className="lcd-grid" />
             

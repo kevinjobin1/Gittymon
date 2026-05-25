@@ -142,7 +142,7 @@ function wrapText(text: string, maxLen: number): string[] {
 
 // ======== SVG Card Generator ========
 export async function generateSvgCard(username: string, env: Env): Promise<string> {
-  const cleanUsername = username.trim().replace(/[^a-zA-Z0-9-]/g, '');
+  const cleanUsername = (username.trim().replace(/[^a-zA-Z0-9-]/g, '')) || 'x';
   const leaderboard = await loadLeaderboard(env.LEADERBOARD);
   const entry = leaderboard.find(e => e.username.toLowerCase() === cleanUsername.toLowerCase());
 
@@ -368,7 +368,7 @@ function wrapTextToLength(text: string, maxLen: number): string[] {
 
 // ======== GIF Card Generator ========
 export async function generateGifCard(username: string, env: Env): Promise<Uint8Array> {
-  const cleanUsername = username.trim().replace(/[^a-zA-Z0-9-]/g, '');
+  const cleanUsername = (username.trim().replace(/[^a-zA-Z0-9-]/g, '')) || 'x';
   const leaderboard = await loadLeaderboard(env.LEADERBOARD);
   const entry = leaderboard.find(e => e.username.toLowerCase() === cleanUsername.toLowerCase());
   const publicRepos = cleanUsername.length * 2 || 12;
@@ -405,7 +405,6 @@ export async function generateGifCard(username: string, env: Env): Promise<Uint8
     [161,161,170],[56,189,248],[244,63,94],[15,23,42],[248,113,113],[168,85,247],
     [34,211,238],[250,204,21],
   ];
-  const flatPalette = PALETTE.flat();
   const gif = new GIFEncoder();
   const NUM_FRAMES = 16;
   const bounceCurve = [0,-0.5,-1.5,-2.5,-3,-2.5,-1.5,-0.5,0,-0.5,-1.5,-2,-1.5,-0.5,0,-0.5];
@@ -484,7 +483,7 @@ export async function generateGifCard(username: string, env: Env): Promise<Uint8
     const wrapLines = wrapTextToLength(visibleText, 22).slice(0, 3);
     if (f % 3 < 2 && wrapLines.length > 0) { const lastIdx = wrapLines.length - 1; if (wrapLines[lastIdx].length < 22) wrapLines[lastIdx] += '_'; }
     wrapLines.forEach((line, li) => canvas.drawText(line, 74, 74 + li * 6, 6));
-    gif.writeFrame(canvas.pixels, W, H, { palette: flatPalette, delay: 100 });
+    gif.writeFrame(canvas.pixels, W, H, { palette: PALETTE, delay: 100 });
   }
   gif.finish();
   return gif.bytes();
