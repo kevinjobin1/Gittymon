@@ -1,8 +1,17 @@
 node_modules/
 build/
 dist/
+.agents/
+.antigravity/
+DESIGN.md
+knowledge.md
+.vscode/
 coverage/
 .DS_Store
 *.log
 .env*
 !.env.example
+
+# Generated data files
+leaderboard.json
+summon-cache.json

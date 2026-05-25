@@ -10,7 +10,7 @@ export function getSeedHash(seed: string): number {
 }
 
 // Deterministic random numbers from a hash stream
-class LCG {
+export class LCG {
   private state: number;
   constructor(seedHash: number) {
     this.state = seedHash || 123456789;

@@ -47,6 +47,33 @@ export function AiBossBattleView({
 
   const playerCanvasRef = useRef<HTMLCanvasElement>(null);
   const enemyCanvasRef = useRef<HTMLCanvasElement>(null);
+  const prevPlayerHPRef = useRef<number | null>(null);
+  const prevBossHPRef = useRef<number | null>(null);
+  const [flashTarget, setFlashTarget] = useState<'player' | 'boss' | null>(null);
+  const playerFlashTimeoutRef = useRef<number | null>(null);
+  const bossFlashTimeoutRef = useRef<number | null>(null);
+
+  // HP decrease detection — flash HP bar when damage taken
+  useEffect(() => {
+    if (prevPlayerHPRef.current !== null && playerHP < prevPlayerHPRef.current) {
+      if (playerFlashTimeoutRef.current) clearTimeout(playerFlashTimeoutRef.current);
+      setFlashTarget('player');
+      playerFlashTimeoutRef.current = window.setTimeout(() => setFlashTarget((prev) => prev === 'player' ? null : prev), 350);
+    }
+    prevPlayerHPRef.current = playerHP;
+
+    if (prevBossHPRef.current !== null && bossHP < prevBossHPRef.current) {
+      if (bossFlashTimeoutRef.current) clearTimeout(bossFlashTimeoutRef.current);
+      setFlashTarget('boss');
+      bossFlashTimeoutRef.current = window.setTimeout(() => setFlashTarget((prev) => prev === 'boss' ? null : prev), 350);
+    }
+    prevBossHPRef.current = bossHP;
+
+    return () => {
+      if (playerFlashTimeoutRef.current) clearTimeout(playerFlashTimeoutRef.current);
+      if (bossFlashTimeoutRef.current) clearTimeout(bossFlashTimeoutRef.current);
+    };
+  }, [playerHP, bossHP]);
 
   // Tick frames
   useEffect(() => {
@@ -69,7 +96,7 @@ export function AiBossBattleView({
     }
   }, [playerMon, animFrame]);
 
-  // Handle battle turns with live Gemini commentator integration
+  // Handle battle turns with live AI commentator integration
   const executeTurn = async (actionType: 'MOVE' | 'HEAL' | 'SPIT_ROAST', moveIdx?: number) => {
     if (isOver || aiLoading) return;
 
@@ -95,7 +122,7 @@ export function AiBossBattleView({
     }
 
     try {
-      // Trigger the magic server-side Gemini commentator endpoint!
+      // Trigger the magic server-side AI commentator endpoint!
       const res = await fetch('/api/ai-boss-comment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -263,7 +290,7 @@ export function AiBossBattleView({
             {/* Health Meter HUD */}
             <div className="flex items-center space-x-1">
               <span className="text-[6.5px] font-bold">HP:</span>
-              <div className="flex-1 bg-gray-200 border border-[#1a1a1a] h-2.5 p-0.5 relative flex">
+              <div className={`flex-1 bg-gray-200 border border-[#1a1a1a] h-2.5 p-0.5 relative flex ${flashTarget === 'boss' ? 'animate-hp-flash' : ''}`}>
                 <div
                   className={`h-full transition-all duration-200 ${
                     bossHPPercent < 30 ? 'bg-red-500 animate-pulse' : bossHPPercent < 60 ? 'bg-yellow-400' : 'bg-[#1a1a1a]'
@@ -287,7 +314,7 @@ export function AiBossBattleView({
             </div>
             <div className="flex items-center space-x-1">
               <span className="text-[6.5px] font-bold">HP:</span>
-              <div className="flex-1 bg-gray-200 border border-[#1a1a1a] h-2.5 p-0.5 relative flex">
+              <div className={`flex-1 bg-gray-200 border border-[#1a1a1a] h-2.5 p-0.5 relative flex ${flashTarget === 'player' ? 'animate-hp-flash' : ''}`}>
                 <div
                   className={`h-full transition-all duration-300 ${
                     playerHPPercent < 30 ? 'bg-[#7f001c]' : playerHPPercent < 60 ? 'bg-yellow-500' : 'bg-[#1a1a1a]'
@@ -335,7 +362,7 @@ export function AiBossBattleView({
               AI ROAST ENGINE GENERATIVE IN PROCESS...
             </div>
             <div className="text-[6.5px] text-gray-400 text-center uppercase leading-none">
-              Gemini model is crafting savage critiques...
+              AI roast engine is crafting savage critiques...
             </div>
           </div>
         ) : activeMenu === 'MAIN' ? (

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { playRetroSound, isAudioEnabled, toggleAudioMute } from '../utils/audio';
 import { BackgroundMap } from './BackgroundMap';
-
+import GitHubButton from 'react-github-btn'
 interface ConsoleShellProps {
   children: React.ReactNode;
   isSynced?: boolean;
@@ -208,13 +208,13 @@ export function ConsoleShell({
           
           {/* Lens horizontal structural details */}
           <div className="w-full h-5 flex justify-between items-center mb-1.5 px-1 sm:px-2">
-            <div className="text-[7.5px] sm:text-[9.5px] text-gray-300 tracking-tighter font-mono uppercase truncate max-w-[150px] sm:max-w-[190px]" style={{ fontFamily: '"Courier Prime", monospace' }}>
-              ✦ DOT MATRIX SCREEN
+            <div className="text-[7.5px] sm:text-[9.5px] text-gray-300 tracking-tighter font-mono uppercase truncate max-w-[150px] sm:max-w-[190px] 
+              flex items-center gap-1 font-semi-bold
+            " style={{ fontFamily: '"Courier Prime", monospace' }}>
+              <GitHubButton className="flex items-center gap-1 opacity-85 hover:opacity-100 cursor-pointer hover:text-white transition-all bg-[#1a1b20] hover:bg-gray-800 px-2 py-0.5 rounded border border-gray-700 active:scale-95 text-[6.5px] sm:text-[8px] text-gray-300 font-bold" href="https://github.com/kevinjobin1/Gittymon" data-color-scheme="no-preference: dark_dimmed; light: dark_dimmed; dark: dark_dimmed;" data-icon="octicon-star" data-show-count="true" aria-label="Star kevinjobin1/Gittymon on GitHub">Star</GitHubButton>
             </div>
-            
             {/* Top Right Bezel Status Widgets Area */}
             <div className="flex items-center gap-2 text-gray-400 text-[6.5px] sm:text-[8px] font-mono select-none" style={{ fontFamily: '"Courier Prime", monospace' }}>
-              
               {/* Interactive Sound indicator */}
               <button 
                 onClick={handleToggleSound}
@@ -232,10 +232,11 @@ export function ConsoleShell({
                     : 'bg-red-500 shadow-[0_0_5px_#ef4444] animate-pulse'
                 }`} />
                 <span className="text-[6px] sm:text-[7.5px] font-bold text-gray-300 tracking-normal font-mono" style={{ fontFamily: '"Courier Prime", monospace' }}>
-                  {isSynced ? 'SYNCED' : 'GIT_SYNC'}
+                  {isSynced ? 'ONLINE' : 'OFFLINE'}
                 </span>
               </div>
-            </div>
+
+        </div>
           </div>
 
           {/* Active Liquid Crystal Screen */}
@@ -262,8 +263,8 @@ export function ConsoleShell({
 
                 {/* Developer / License footer */}
                 <div className="text-[7px] uppercase tracking-wider text-center opacity-0 animate-fade-in-delayed font-bold leading-normal" style={{ fontFamily: '"Courier Prime", monospace' }}>
-                  © 2026 GEMINI BUILD<br/>
-                  LICENSED BY GOOGLE
+                  © 2026 POWERED BY GROQ AI <br/>
+                  GIT SUMMONED BY @KEVINJOBIN1
                 </div>
               </div>
             ) : (
@@ -293,68 +294,91 @@ export function ConsoleShell({
 
           <div className="flex justify-between items-center w-full mb-3 sm:mb-4">
             
-            {/* Left Hand D-PAD controller cross (X-aligned meeting at center) */}
-            <div className="relative w-24 h-24 sm:w-26 sm:h-26 ml-1 bg-gray-900 rounded-full p-1.5 shadow-[inset_0_4px_8px_rgba(0,0,0,0.6),_0_2px_4px_rgba(255,255,255,0.1)] border-2 border-gray-850 overflow-hidden flex items-center justify-center">
-              {/* Inner housing */}
-              <div className="relative w-full h-full rounded-full bg-gray-950 overflow-hidden">
-                {/* UP button */}
+            {/* Authentic Nintendo Gameboy D-PAD */}
+            <div className="relative w-24 h-24 sm:w-26 sm:h-26 ml-1 bg-gray-350 rounded-full border-2 border-gray-400 shadow-[inset_3px_3px_6px_rgba(0,0,0,0.35),_1px_1px_1px_rgba(255,255,255,0.7)] flex items-center justify-center select-none">
+              {/* Outer cross container holding the 4 buttons */}
+              <div className="relative w-20 h-20 sm:w-21 sm:h-21">
+                {/* Vertical Bar Base (visual silhouette) */}
+                <div className="absolute left-1/2 -translate-x-1/2 top-0 w-7.5 h-20 sm:h-21 bg-neutral-900 rounded-[3px] shadow-[2px_2px_4px_rgba(0,0,0,0.4)] pointer-events-none" />
+                
+                {/* Horizontal Bar Base (visual silhouette) */}
+                <div className="absolute top-1/2 -translate-y-1/2 left-0 w-20 sm:w-21 h-7.5 bg-neutral-900 rounded-[3px] shadow-[2px_2px_4px_rgba(0,0,0,0.4)] pointer-events-none" />
+
+                {/* UP Directional Button */}
                 <button
                   onClick={() => triggerButton('UP', () => onPressDirection?.('UP'))}
-                  className={`absolute inset-0 cursor-pointer transition-all active:brightness-125 ${
-                    pressedKeys.UP ? 'bg-[#7f001c]' : 'bg-gray-800 hover:bg-gray-750'
+                  className={`absolute top-0 left-1/2 -translate-x-1/2 w-7.5 h-7 rounded-t-[3px] cursor-pointer flex flex-col justify-end items-center pb-1 transition-all ${
+                    pressedKeys.UP 
+                      ? 'bg-neutral-950 shadow-inner translate-y-[1px]' 
+                      : 'bg-neutral-900 hover:bg-neutral-850 active:brightness-110'
                   }`}
-                  style={{ clipPath: 'polygon(0% 0%, 100% 0%, 50% 50%)' }}
                   aria-label="D-pad Up"
                 >
-                  <span className="absolute top-1.5 left-1/2 -translate-x-1/2 text-gray-400 font-bold text-[9px] sm:text-[10px] select-none pointer-events-none">▲</span>
+                  {/* Ribbed lines: 3 thin horizontal lines */}
+                  <div className="flex flex-col gap-[1.5px] mb-1 opacity-70">
+                    <div className="w-3.5 h-[1.5px] bg-neutral-700" />
+                    <div className="w-3.5 h-[1.5px] bg-neutral-700" />
+                    <div className="w-3.5 h-[1.5px] bg-neutral-700" />
+                  </div>
                 </button>
 
-                {/* RIGHT button */}
-                <button
-                  onClick={() => triggerButton('RIGHT', () => onPressDirection?.('RIGHT'))}
-                  className={`absolute inset-0 cursor-pointer transition-all active:brightness-125 ${
-                    pressedKeys.RIGHT ? 'bg-[#7f001c]' : 'bg-gray-800 hover:bg-gray-750'
-                  }`}
-                  style={{ clipPath: 'polygon(100% 0%, 100% 100%, 50% 50%)' }}
-                  aria-label="D-pad Right"
-                >
-                  <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-[9px] sm:text-[10px] select-none pointer-events-none">▶</span>
-                </button>
-
-                {/* DOWN button */}
+                {/* DOWN Directional Button */}
                 <button
                   onClick={() => triggerButton('DOWN', () => onPressDirection?.('DOWN'))}
-                  className={`absolute inset-0 cursor-pointer transition-all active:brightness-125 ${
-                    pressedKeys.DOWN ? 'bg-[#7f001c]' : 'bg-gray-800 hover:bg-gray-750'
+                  className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-7.5 h-7 rounded-b-[3px] cursor-pointer flex flex-col justify-start items-center pt-1 transition-all ${
+                    pressedKeys.DOWN 
+                      ? 'bg-neutral-950 shadow-inner -translate-y-[1px]' 
+                      : 'bg-neutral-900 hover:bg-neutral-850 active:brightness-110'
                   }`}
-                  style={{ clipPath: 'polygon(100% 100%, 0% 100%, 50% 50%)' }}
                   aria-label="D-pad Down"
                 >
-                  <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 text-gray-400 font-bold text-[9px] sm:text-[10px] select-none pointer-events-none">▼</span>
+                  {/* Ribbed lines */}
+                  <div className="flex flex-col gap-[1.5px] mt-1 opacity-70">
+                    <div className="w-3.5 h-[1.5px] bg-neutral-700" />
+                    <div className="w-3.5 h-[1.5px] bg-neutral-700" />
+                    <div className="w-3.5 h-[1.5px] bg-neutral-700" />
+                  </div>
                 </button>
 
-                {/* LEFT button */}
+                {/* LEFT Directional Button */}
                 <button
                   onClick={() => triggerButton('LEFT', () => onPressDirection?.('LEFT'))}
-                  className={`absolute inset-0 cursor-pointer transition-all active:brightness-125 ${
-                    pressedKeys.LEFT ? 'bg-[#7f001c]' : 'bg-gray-800 hover:bg-gray-750'
+                  className={`absolute left-0 top-1/2 -translate-y-1/2 w-7 h-7.5 rounded-l-[3px] cursor-pointer flex justify-end items-center pr-1 transition-all ${
+                    pressedKeys.LEFT 
+                      ? 'bg-neutral-950 shadow-inner translate-x-[1px]' 
+                      : 'bg-neutral-900 hover:bg-neutral-850 active:brightness-110'
                   }`}
-                  style={{ clipPath: 'polygon(0% 100%, 0% 0%, 50% 50%)' }}
                   aria-label="D-pad Left"
                 >
-                  <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-[9px] sm:text-[10px] select-none pointer-events-none">◀</span>
+                  {/* Ribbed lines: 3 thin vertical lines */}
+                  <div className="flex gap-[1.5px] mr-1 opacity-70">
+                    <div className="w-[1.5px] h-3.5 bg-neutral-700" />
+                    <div className="w-[1.5px] h-3.5 bg-neutral-700" />
+                    <div className="w-[1.5px] h-3.5 bg-neutral-700" />
+                  </div>
                 </button>
 
-                {/* Center cap core / X separator lines */}
-                <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                  {/* Subtle X-shaped separator lines */}
-                  <div className="absolute w-[1.5px] h-full bg-gray-900/40 rotate-45" />
-                  <div className="absolute w-[1.5px] h-full bg-gray-900/40 -rotate-45" />
-                  
-                  {/* Center circle dimple */}
-                  <div className="w-5.5 h-5.5 rounded-full bg-gray-900 border border-gray-800 shadow-inner flex items-center justify-center">
-                    <div className="w-2.5 h-2.5 rounded-full bg-gray-950 shadow-inner" />
+                {/* RIGHT Directional Button */}
+                <button
+                  onClick={() => triggerButton('RIGHT', () => onPressDirection?.('RIGHT'))}
+                  className={`absolute right-0 top-1/2 -translate-y-1/2 w-7 h-7.5 rounded-r-[3px] cursor-pointer flex justify-start items-center pl-1 transition-all ${
+                    pressedKeys.RIGHT 
+                      ? 'bg-neutral-950 shadow-inner -translate-x-[1px]' 
+                      : 'bg-neutral-900 hover:bg-neutral-850 active:brightness-110'
+                  }`}
+                  aria-label="D-pad Right"
+                >
+                  {/* Ribbed lines */}
+                  <div className="flex gap-[1.5px] ml-1 opacity-70">
+                    <div className="w-[1.5px] h-3.5 bg-neutral-700" />
+                    <div className="w-[1.5px] h-3.5 bg-neutral-700" />
+                    <div className="w-[1.5px] h-3.5 bg-neutral-700" />
                   </div>
+                </button>
+
+                {/* Center Core Cap (with original Gameboy circular indent) */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-7.5 h-7.5 bg-neutral-900 pointer-events-none flex items-center justify-center">
+                  <div className="w-5.5 h-5.5 rounded-full bg-neutral-950 shadow-[inset_1px_1px_3px_rgba(0,0,0,0.8),_0.5px_0.5px_0px_rgba(255,255,255,0.15)]" />
                 </div>
               </div>
             </div>

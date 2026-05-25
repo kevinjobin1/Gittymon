@@ -79,7 +79,7 @@ export function PvpLobbyView({
     <div className="flex-1 flex flex-col justify-between p-1 px-1.5 text-[#1a1a1a] select-none font-mono">
       {/* Visual Header */}
       <div className="flex justify-between items-center border-b-2 border-[#1a1a1a] pb-1 font-bold text-[9px]">
-        <span>BUGGYMON NET</span>
+        <span>GITTYMON NET</span>
         <span className="text-emerald-800 animate-pulse">● ARENA LOBBY</span>
       </div>
 
@@ -91,7 +91,7 @@ export function PvpLobbyView({
           </div>
           
           {idlePlayers.length > 0 ? (
-            <div className="mt-1 text-[7px] text-gray-400 font-bold max-h-[22px] overflow-hidden truncate">
+            <div className="mt-1 text-[7px] text-gray-400 font-bold max-h-5.5 overflow-hidden truncate">
               IDLE: {idlePlayers.slice(0, 3).join(', ')}
             </div>
           ) : (
@@ -102,7 +102,7 @@ export function PvpLobbyView({
         </div>
 
         {/* Searching Status Panel */}
-        <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-[#1a1a1a] bg-neutral-50 rounded p-2 text-center select-none min-h-[75px]">
+        <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-[#1a1a1a] bg-neutral-50 rounded p-2 text-center select-none min-h-18.75">
           {isSearching ? (
             <div className="space-y-1.5">
               <div className="relative">

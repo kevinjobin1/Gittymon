@@ -1,7 +1,8 @@
 import express from 'express';
+import fs from 'fs';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { GoogleGenAI, Type } from '@google/genai';
+import OpenAI from 'openai';
 import dotenv from 'dotenv';
 import { loadLeaderboard } from './server/leaderboard.js';
 import { setupMultiplayer } from './server/multiplayer.js';
@@ -10,27 +11,26 @@ import { generateSvgCard, generateGifCard } from './server/embed.js';
 // Load environment variables from .env
 dotenv.config();
 
+const escapeHtml = (str: string): string =>
+  str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
 const app = express();
 const PORT = 3000;
 
 app.use(express.json());
 
-// Initialize Gemini Client safely
-// Ensure that User-Agent is set to 'aistudio-build' for telemetry as required
-const apiKey = process.env.GEMINI_API_KEY;
-let ai: GoogleGenAI | null = null;
+// Initialize Groq client (OpenAI-compatible) for Llama 3 inference
+// Sign up for a free API key at https://console.groq.com
+const apiKey = process.env.GROQ_API_KEY;
+let groq: OpenAI | null = null;
 
 if (apiKey) {
-  ai = new GoogleGenAI({
+  groq = new OpenAI({
     apiKey,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
-      },
-    },
+    baseURL: 'https://api.groq.com/openai/v1',
   });
 } else {
-  console.warn('GEMINI_API_KEY is not defined in the environment variables. Mock AI generations will be used fallback.');
+  console.warn('GROQ_API_KEY is not defined in the environment variables. Mock AI generations will be used as fallback.');
 }
 
 /**
@@ -44,6 +44,17 @@ app.post('/api/summon', async (req, res) => {
   }
 
   const cleanUsername = username.trim().replace(/[^a-zA-Z0-9-]/g, '');
+
+  // Check summon cache first — skip AI if we already have a result for this user
+  const isRefresh = req.body.refresh === true;
+  if (!isRefresh) {
+    const cache = loadSummonCache();
+    const cached = cache.find(e => e.username.toLowerCase() === cleanUsername.toLowerCase());
+    if (cached) {
+      console.log(`Serving cached summon for ${cleanUsername}`);
+      return res.json(cached.resultMon);
+    }
+  }
 
   let githubData = {
     name: cleanUsername,
@@ -86,84 +97,64 @@ app.post('/api/summon', async (req, res) => {
     console.warn('Could not contact GitHub API due to networking or rate limits. Utilizing fallback metrics gracefully.', err);
   }
 
-  // If Gemini API is not initialized or fails, generate a hilarious local mock so the game remains completely playable
-  if (!ai) {
+  // If Groq is not initialized or fails, generate a hilarious local mock so the game remains completely playable
+  if (!groq) {
     const mockState = generateMockRoastMon(githubData, cleanUsername);
+    addToSummonCache(cleanUsername, mockState);
     return res.json(mockState);
   }
 
   try {
-    const prompt = `
-      You are an elite, sarcastic, witty retro RPG narrator for "ROAST-MON" (inspired by Pokemon, 8-bit games, and funny coding critiques).
-      Analyze this GitHub user's metrics:
-      - Username: ${cleanUsername}
-      - Real Name: ${githubData.name}
-      - Bio: "${githubData.bio}"
-      - Public Repos: ${githubData.public_repos}
-      - Followers: ${githubData.followers}
-      - Joined GitHub: ${githubData.joinedYear}
-      - Location: ${githubData.location}
+    const systemPrompt = `You are an elite, sarcastic, witty retro RPG narrator for "ROAST-MON" (inspired by Pokemon, 8-bit games, and funny coding critiques).
 
-      Summon their customized 8-bit "ROAST-MON" creature!
-      1. Choose a funny, mock Poke-style monster name for them, fitting for a software engineer (e.g. Commitobat, Monadon, Forkachu, Bugmander, NodeSlime, Dockergon, Asyncopod). It should reflect their metrics or handle.
-      2. Choose a type (e.g., "Direct-to-master", "Coffee-Fueled", "Recursive Nightmare", "Unresolved Conflict", "Legacy Ghost", "AnyScript", "StackOverflow Cloner", "Infinite-Loop").
-      3. Write a hilarious, biting, yet playful 8-bit RPG-style ROAST. Make it snappy and fit for an 8-bit handheld review. Critiques their public repos, lack of bio, follower count, or location. Keep it to max 150 characters to fit on a small retro screen.
-      4. Assign structured stats (HP, Attack, Defense, Speed, Chaos level) between 10 and 100 based loosely on their metrics. (e.g. Followers increase HP, public repos increase Attack or Chaos, Age of account increases defense, speed depends on their style).
-      5. Formulate 4 funny custom battle moves (e.g., "Force-Push Master", "Drop Node_Modules", "Coffee Spill Panic", "Stack Overflow Ctrl-C", "Copy AI Prompt", "Scream at Terminal"). For each move, define its name, an 8-bit attack power (0 to 100), and a short descriptions.
-    `;
+You must respond with valid JSON matching this exact schema:
+{
+  "name": "string (creative monster name like Commitobat, Forkachu, LegacyGhost)",
+  "type": "string (fictional RPG type like NullPointer, DirectMaster, CoffeeFueled)",
+  "roast": "string (funny biting developer roast, MAX 150 characters)",
+  "stats": {
+    "hp": "number 10-100",
+    "attack": "number 10-100",
+    "defense": "number 10-100",
+    "speed": "number 10-100",
+    "chaos": "number 10-100"
+  },
+  "moves": [
+    { "name": "string", "power": "number 10-100", "desc": "string" }
+  ]
+}
 
-    // Query Gemini 3.5-flash with a structured JSON response representation
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            name: {
-              type: Type.STRING,
-              description: "The creative mock monster name, e.g. Commitobat, Forkachu, LegacyGhost"
-            },
-            type: {
-              type: Type.STRING,
-              description: "Fictional RPG character type, e.g. NullPointer, DirectMaster, CoffeeFueled"
-            },
-            roast: {
-              type: Type.STRING,
-              description: "A funny, snappy, biting developer roast of this user. MAX 150 characters."
-            },
-            stats: {
-              type: Type.OBJECT,
-              properties: {
-                hp: { type: Type.INTEGER, description: "HP (10 - 100)" },
-                attack: { type: Type.INTEGER, description: "Attack (10 - 100)" },
-                defense: { type: Type.INTEGER, description: "Defense (10 - 100)" },
-                speed: { type: Type.INTEGER, description: "Speed (10 - 100)" },
-                chaos: { type: Type.INTEGER, description: "Chaos level (10 - 100)" }
-              },
-              required: ['hp', 'attack', 'defense', 'speed', 'chaos']
-            },
-            moves: {
-              type: Type.ARRAY,
-              description: "Exactly 4 custom moves reflecting their metrics and developer traits",
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  name: { type: Type.STRING, description: "Move title" },
-                  power: { type: Type.INTEGER, description: "Damage power representation (10 - 100)" },
-                  desc: { type: Type.STRING, description: "Move short description" }
-                },
-                required: ['name', 'power', 'desc']
-              }
-            }
-          },
-          required: ['name', 'type', 'roast', 'stats', 'moves']
-        }
-      }
+Exactly 4 moves. Return ONLY valid JSON, no other text.`;
+
+    const userPrompt = `Analyze this GitHub user's metrics:
+- Username: ${cleanUsername}
+- Real Name: ${githubData.name}
+- Bio: "${githubData.bio}"
+- Public Repos: ${githubData.public_repos}
+- Followers: ${githubData.followers}
+- Joined GitHub: ${githubData.joinedYear}
+- Location: ${githubData.location}
+
+Summon their customized 8-bit "ROAST-MON" creature!
+1. Choose a funny, mock Poke-style monster name fitting for a software engineer (e.g. Commitobat, Monadon, Forkachu, Bugmander, NodeSlime, Dockergon, Asyncopod). Reflect their metrics or handle.
+2. Choose a type (e.g., "Direct-to-master", "Coffee-Fueled", "Recursive Nightmare", "Unresolved Conflict", "Legacy Ghost", "AnyScript", "StackOverflow Cloner", "Infinite-Loop").
+3. Write a hilarious, biting, yet playful 8-bit RPG-style ROAST. MAX 150 characters.
+4. Assign stats (HP, Attack, Defense, Speed, Chaos) between 10 and 100 based loosely on metrics.
+5. Formulate exactly 4 funny custom battle moves with name, power (10-100), and short description.`;
+
+    // Query Groq Llama 3 with JSON mode for structured output
+    const response = await groq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.8,
+      max_tokens: 1200,
     });
 
-    const responseText = response.text || '';
+    const responseText = response.choices[0]?.message?.content || '';
     const parsedData = JSON.parse(responseText.trim());
 
     // Merge everything with original metadata for the application state
@@ -195,11 +186,13 @@ app.post('/api/summon', async (req, res) => {
       spriteSeed: `${cleanUsername}-${githubData.joinedYear}-${githubData.public_repos}`
     };
 
+    addToSummonCache(cleanUsername, resultMon);
     res.json(resultMon);
 
   } catch (error) {
-    console.error('Gemini summon error. Utilizing local dithered model fallback gracefully:', error);
+    console.error('Groq summon error. Utilizing local dithered model fallback gracefully:', error);
     const fallbackMon = generateMockRoastMon(githubData, cleanUsername);
+    addToSummonCache(cleanUsername, fallbackMon);
     res.json(fallbackMon);
   }
 });
@@ -269,6 +262,268 @@ app.get('/api/embed/:username.gif', (req, res) => {
 });
 
 /**
+ * Shields.io dynamic badge endpoint.
+ * Returns JSON in shields.io endpoint format for live badge rendering.
+ */
+app.get('/api/badge/:username', (req, res) => {
+  const { username } = req.params;
+  if (!username) return res.status(400).json({ error: 'Username parameter required' });
+
+  const cleanUsername = username.trim().replace(/[^a-zA-Z0-9-]/g, '');
+  if (!cleanUsername) return res.status(400).json({ error: 'Invalid username' });
+
+  const leaderboard = loadLeaderboard();
+  const entry = leaderboard.find(e => e.username.toLowerCase() === cleanUsername.toLowerCase());
+
+  // Deterministic level (same as embed.ts) — use leaderboard if available
+  const level = entry?.level || Math.max(1, Math.min(99, Math.floor(cleanUsername.length * 3 + (cleanUsername.charCodeAt(0) % 20))));
+
+  // Rank on leaderboard (1-indexed)
+  const rank = entry
+    ? [...leaderboard].sort((a, b) => (b.wins - b.losses) - (a.wins - a.losses)).findIndex(e => e.username.toLowerCase() === cleanUsername.toLowerCase()) + 1
+    : null;
+
+  // Color scheme based on rank
+  let color = '#7f001c';  // default crimson
+  if (rank) {
+    if (rank <= 3) color = '#facc15';    // gold for top 3
+    else if (rank <= 10) color = '#22c55e'; // green for top 10
+    else if (rank <= 50) color = '#f97316'; // orange for top 50
+  }
+
+  const message = rank ? `#${rank} · LV ${level}` : `LV ${level}`;
+
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Cache-Control', 'max-age=120, s-maxage=300, stale-while-revalidate=600');
+  res.json({
+    schemaVersion: 1,
+    label: 'Gittymon',
+    message,
+    color,
+    namedLogo: 'github',
+    logoColor: '#e2dfde',
+  });
+});
+
+/**
+ * Social share / standalone card page route.
+ * Renders a full HTML page with Open Graph tags for sharing on Twitter, Discord, etc.
+ */
+app.get('/card/:username', (req, res) => {
+  const { username } = req.params;
+  if (!username) return res.status(400).send('Username parameter required');
+
+  const cleanUsername = username.trim().replace(/[^a-zA-Z0-9-]/g, '');
+  if (!cleanUsername) return res.status(400).send('Invalid username');
+
+  const leaderboard = loadLeaderboard();
+  const entry = leaderboard.find(e => e.username.toLowerCase() === cleanUsername.toLowerCase());
+
+  // Deterministic card data (matches server/embed.ts generation)
+  const codeHash = cleanUsername.length + (cleanUsername.length * 2);
+  const names = ['NodeSlime', 'Forkachu', 'AsyncPod', 'CommitoBat', 'Dockergon', 'GitSlasher', 'JSON_Golem', 'BugMander'];
+  const monName = entry?.monName || names[codeHash % names.length];
+  const types = ['Direct-to-master', 'AnyScript-Type', 'StackOverflow Cloner', 'Merge-Fearful', 'Coffee-Fueled', 'Infinite-Loop'];
+  const type = types[cleanUsername.charCodeAt(0) % types.length];
+  const level = entry?.level || Math.max(1, Math.min(99, Math.floor(cleanUsername.length * 3 + (cleanUsername.charCodeAt(0) % 20))));
+  const roasts = [
+    'Only uses brute force push -m. Absolute terror to code reviews.',
+    'Bio is standard default template. Crawls StackOverflow daily for solutions.',
+    'Has zero comments, uses var instead of let. Legacy engine standby.',
+    'Spends 5 hours styling tiny retro buttons instead of shipping real core features.'
+  ];
+  const roast = roasts[codeHash % roasts.length];
+  const wins = entry?.wins ?? 0;
+  const losses = entry?.losses ?? 0;
+
+  const origin = `${req.protocol}://${req.get('host')}`;
+  const gifUrl = `${origin}/api/embed/${cleanUsername}.gif`;
+  const cardUrl = `${origin}/card/${cleanUsername}`;
+  const title = `${monName.toUpperCase()} LV ${level}`;
+  const ogTitle = `@${cleanUsername}'s Gittymon — ${title}`;
+
+  const h = escapeHtml;
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${h(ogTitle)}</title>
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="${h(ogTitle)}">
+  <meta property="og:description" content="${h(roast)}">
+  <meta property="og:image" content="${gifUrl}">
+  <meta property="og:image:width" content="460">
+  <meta property="og:image:height" content="220">
+  <meta property="og:image:type" content="image/gif">
+  <meta property="og:url" content="${cardUrl}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Gittymon">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${h(ogTitle)}">
+  <meta name="twitter:description" content="${h(roast)}">
+  <meta name="twitter:image" content="${gifUrl}">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f0f13;
+      color: #e2dfde;
+      font-family: 'Courier New', Courier, monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .bg-grid {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+    .container { position: relative; z-index: 1; text-align: center; max-width: 600px; }
+    .logo {
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 3px;
+      color: #7f001c;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+    }
+    .card-frame {
+      display: inline-block;
+      background: #18181b;
+      border: 2px solid #27272a;
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 0 60px rgba(127, 0, 28, 0.15), 0 8px 32px rgba(0,0,0,0.5);
+    }
+    .card-frame img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      image-rendering: pixelated;
+      border-radius: 4px;
+    }
+    .info {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .username {
+      font-size: 14px;
+      font-weight: 900;
+      color: #ffffff;
+      letter-spacing: 1px;
+    }
+    .username span { color: #7f001c; }
+    .mon-name {
+      font-size: 20px;
+      font-weight: 900;
+      color: #ffffff;
+      letter-spacing: 2px;
+      text-shadow: 0 0 12px rgba(127, 0, 28, 0.4);
+    }
+    .type-badge {
+      display: inline-block;
+      font-size: 8px;
+      font-weight: 700;
+      color: #7f001c;
+      border: 1px solid #7f001c;
+      border-radius: 20px;
+      padding: 4px 14px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .record {
+      font-size: 9px;
+      color: #71717a;
+      letter-spacing: 1px;
+    }
+    .record strong { color: #a1a1aa; }
+    .roast-box {
+      margin-top: 12px;
+      background: #1a1a1e;
+      border-left: 3px solid #7f001c;
+      border-radius: 4px;
+      padding: 12px 16px;
+      max-width: 460px;
+    }
+    .roast-box p {
+      font-size: 9px;
+      line-height: 1.6;
+      color: #a1a1aa;
+      font-style: italic;
+      text-align: left;
+    }
+    .roast-label {
+      font-size: 7px;
+      font-weight: 700;
+      color: #7f001c;
+      letter-spacing: 2px;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+    .share-hint {
+      margin-top: 24px;
+      font-size: 7px;
+      color: #52525b;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .footer {
+      margin-top: 32px;
+      font-size: 7px;
+      color: #3f3f46;
+      letter-spacing: 1px;
+    }
+    .footer a {
+      color: #7f001c;
+      text-decoration: none;
+    }
+    .footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="container">
+    <div class="logo">⚡ Gittymon Network ⚡</div>
+    <div class="card-frame">
+      <img src="${gifUrl}" width="460" height="220" alt="@${cleanUsername}'s Gittymon Card">
+    </div>
+    <div class="info">
+      <div class="username">@<span>${cleanUsername}</span></div>
+      <div class="mon-name">${h(monName.toUpperCase())}</div>
+      <div class="type-badge">${h(type.toUpperCase())}</div>
+      <div class="record">LV ${level} &nbsp;·&nbsp; W: <strong>${wins}</strong> &nbsp; L: <strong>${losses}</strong></div>
+    </div>
+    <div class="roast-box">
+      <div class="roast-label">📟 System Roast</div>
+      <p>"${h(roast)}"</p>
+    </div>
+    <div class="share-hint">Share this page — Open Graph &amp; Twitter Card enabled</div>
+    <div class="footer">
+      Summon your own at <a href="/">gittymon.dev</a>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Cache-Control', 'max-age=60, s-maxage=120, stale-while-revalidate=600');
+  res.send(html);
+});
+
+/**
  * Endpoint to load the global high scores leaderboard
  */
 app.get('/api/leaderboard', (req, res) => {
@@ -289,7 +544,7 @@ app.post('/api/ai-boss-comment', async (req, res) => {
   const cleanMonName = monName || 'RoastMon';
   const bossHPVal = bossHP ?? 250;
 
-  if (!ai) {
+  if (!groq) {
     const fallbackBossComments = [
       `Your level 50 ${cleanMonName} is a joke! A direct push to master with no code reviews!`,
       `Using ${cleanAction} on me? My compiler is already refactoring your entire life's work!`,
@@ -302,35 +557,85 @@ app.post('/api/ai-boss-comment', async (req, res) => {
   }
 
   try {
-    const prompt = `
-      You are CYBER-DRAKE-Y2K, the elite Level 99 AI Arch-Glitch Gym Leader in "ROAST-MON".
-      You speak in retro-RPG uppercase or witty sassy critiques.
-      You are actively battling a developer named ${username} who has summoned their creature ${cleanMonName} (Stats: HP: ${stats?.hp ?? 50}, Attack: ${stats?.attack ?? 50}, Defense: ${stats?.defense ?? 50}).
-      The player just made the turn combat action: "${cleanAction}".
-      Your current boss health is ${bossHPVal}/250 HP.
-      
-      Output a single hilarious, snappy, extremely biting retro roast (MAX 100 characters!) mocking their action, their Roast-mon's weak stats, or their GitHub quality. Be sassy, short, and punchy. No Markdown or styling.
-    `;
+    const response = await groq.chat.completions.create({
+      model: 'llama-3.1-8b-instant',
+      messages: [
+        {
+          role: 'system',
+          content: `You are CYBER-DRAKE-Y2K, the elite Level 99 AI Arch-Glitch Gym Leader in "ROAST-MON".
+You speak in retro-RPG uppercase or witty sassy critiques.
+Output a single hilarious, snappy, extremely biting retro roast (MAX 100 characters!).
+No Markdown, no styling, no quotes. Just the raw roast text.`
+        },
+        {
+          role: 'user',
+          content: `You are actively battling a developer named ${username} who has summoned their creature ${cleanMonName} (Stats: HP: ${stats?.hp ?? 50}, Attack: ${stats?.attack ?? 50}, Defense: ${stats?.defense ?? 50}).
+The player just made the turn combat action: "${cleanAction}".
+Your current boss health is ${bossHPVal}/250 HP.
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
-      contents: prompt,
-      config: {
-        maxOutputTokens: 80,
-      }
+Mock their action, their Roast-mon's weak stats, or their GitHub quality. Be sassy, short, and punchy. MAX 100 characters.`
+        }
+      ],
+      temperature: 0.9,
+      max_tokens: 80,
     });
 
-    const comment = response.text?.trim() || `My syntax analyzer refuses to even parse your ${cleanAction}!`;
+    const comment = response.choices[0]?.message?.content?.trim() || `My syntax analyzer refuses to even parse your ${cleanAction}!`;
     res.json({ comment: `"${comment}"` });
   } catch (error) {
-    console.error('Gemini boss comment generation error:', error);
+    console.error('Groq boss comment generation error:', error);
     res.json({ comment: `Evaluation of ${cleanAction} threw a critical StackOverflowException!` });
   }
 });
 
 
+// -------------------------------------------------------------------------
+// Summon Cache — persisted to disk so repeated lookups skip the AI call
+// -------------------------------------------------------------------------
+const SUMMON_CACHE_FILE = path.join(process.cwd(), 'summon-cache.json');
+
+interface SummonCacheEntry {
+  username: string;
+  resultMon: any;
+  generatedAt: string;
+}
+
+function loadSummonCache(): SummonCacheEntry[] {
+  try {
+    if (fs.existsSync(SUMMON_CACHE_FILE)) {
+      return JSON.parse(fs.readFileSync(SUMMON_CACHE_FILE, 'utf-8'));
+    }
+  } catch (error) {
+    console.warn('Failed to read summon cache:', error);
+  }
+  return [];
+}
+
+function saveSummonCache(cache: SummonCacheEntry[]): void {
+  try {
+    fs.writeFileSync(SUMMON_CACHE_FILE, JSON.stringify(cache, null, 2), 'utf-8');
+  } catch (error) {
+    console.warn('Failed to write summon cache:', error);
+  }
+}
+
+function addToSummonCache(username: string, resultMon: any): void {
+  const cache = loadSummonCache();
+  // Remove existing entry if present (e.g. on refresh)
+  const existingIdx = cache.findIndex(e => e.username.toLowerCase() === username.toLowerCase());
+  if (existingIdx !== -1) cache.splice(existingIdx, 1);
+  // Keep cache size manageable
+  if (cache.length >= 500) cache.shift();
+  cache.push({
+    username,
+    resultMon,
+    generatedAt: new Date().toISOString(),
+  });
+  saveSummonCache(cache);
+}
+
 /**
- * Generates an extremely fun mock Roast-Mon in case Gemini key is missing or is exhausted
+ * Generates an extremely fun mock Roast-Mon in case Groq API key is missing or is exhausted
  */
 function generateMockRoastMon(githubData: any, username: string) {
   const codeHash = username.length + githubData.public_repos;

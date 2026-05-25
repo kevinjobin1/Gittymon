@@ -45,6 +45,33 @@ export function PvpBattleView({
 
   const playerCanvasRef = useRef<HTMLCanvasElement>(null);
   const enemyCanvasRef = useRef<HTMLCanvasElement>(null);
+  const prevPlayerHPRef = useRef<number | null>(null);
+  const prevEnemyHPRef = useRef<number | null>(null);
+  const [flashTarget, setFlashTarget] = useState<'player' | 'enemy' | null>(null);
+  const playerFlashTimeoutRef = useRef<number | null>(null);
+  const enemyFlashTimeoutRef = useRef<number | null>(null);
+
+  // HP decrease detection — flash HP bar when damage taken
+  useEffect(() => {
+    if (prevPlayerHPRef.current !== null && playerHP < prevPlayerHPRef.current) {
+      if (playerFlashTimeoutRef.current) clearTimeout(playerFlashTimeoutRef.current);
+      setFlashTarget('player');
+      playerFlashTimeoutRef.current = window.setTimeout(() => setFlashTarget((prev) => prev === 'player' ? null : prev), 350);
+    }
+    prevPlayerHPRef.current = playerHP;
+
+    if (prevEnemyHPRef.current !== null && opponentHP < prevEnemyHPRef.current) {
+      if (enemyFlashTimeoutRef.current) clearTimeout(enemyFlashTimeoutRef.current);
+      setFlashTarget('enemy');
+      enemyFlashTimeoutRef.current = window.setTimeout(() => setFlashTarget((prev) => prev === 'enemy' ? null : prev), 350);
+    }
+    prevEnemyHPRef.current = opponentHP;
+
+    return () => {
+      if (playerFlashTimeoutRef.current) clearTimeout(playerFlashTimeoutRef.current);
+      if (enemyFlashTimeoutRef.current) clearTimeout(enemyFlashTimeoutRef.current);
+    };
+  }, [playerHP, opponentHP]);
 
   // Tick frames for breathing layout
   useEffect(() => {
@@ -173,7 +200,7 @@ export function PvpBattleView({
             </div>
             <div className="flex items-center space-x-1">
               <span className="text-[6.5px] font-bold">HP:</span>
-              <div className="flex-1 bg-gray-200 border border-[#1a1a1a] h-2.5 p-0.5 relative flex">
+              <div className={`flex-1 bg-gray-200 border border-[#1a1a1a] h-2.5 p-0.5 relative flex ${flashTarget === 'enemy' ? 'animate-hp-flash' : ''}`}>
                 <div
                   className={`h-full transition-all duration-200 ${
                     enemyHPPercent < 30 ? 'bg-red-500' : enemyHPPercent < 60 ? 'bg-yellow-400' : 'bg-emerald-600'
@@ -197,7 +224,7 @@ export function PvpBattleView({
             </div>
             <div className="flex items-center space-x-1">
               <span className="text-[6.5px] font-bold">HP:</span>
-              <div className="flex-1 bg-gray-200 border border-[#1a1a1a] h-2.5 p-0.5 relative flex">
+              <div className={`flex-1 bg-gray-200 border border-[#1a1a1a] h-2.5 p-0.5 relative flex ${flashTarget === 'player' ? 'animate-hp-flash' : ''}`}>
                 <div
                   className={`h-full transition-all duration-200 ${
                     playerHPPercent < 30 ? 'bg-[#7f001c]' : playerHPPercent < 60 ? 'bg-yellow-500' : 'bg-[#1a1a1a]'

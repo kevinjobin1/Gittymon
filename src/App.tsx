@@ -24,6 +24,38 @@ export default function App() {
   const fetchedMonRef = useRef<RoastMon | null>(null);
   const apiLoadCompletedRef = useRef<boolean>(false);
 
+  const [autoCopyBadge, setAutoCopyBadge] = useState(false);
+
+  const BATTLE_SCREENS: ScreenID[] = ['BATTLE', 'AI_BOSS_BATTLE', 'PVP_BATTLE'];
+  const isBattleScreen = (id: ScreenID) => BATTLE_SCREENS.includes(id);
+
+  // Screen transition animation state
+  const [exitingScreen, setExitingScreen] = useState<ScreenID | null>(null);
+  const prevScreenRef = useRef<ScreenID>('SPLASH');
+  const transitionTimeoutRef = useRef<number | null>(null);
+
+  // Watch for screen changes and trigger exit/enter animations
+  useEffect(() => {
+    if (prevScreenRef.current !== screen) {
+      setExitingScreen(prevScreenRef.current);
+      prevScreenRef.current = screen;
+
+      // Sync battle entrance sound with the battle-enter flash+shake animation
+      if (isBattleScreen(screen)) {
+        playRetroSound('hit');
+      }
+
+      if (transitionTimeoutRef.current) clearTimeout(transitionTimeoutRef.current);
+      transitionTimeoutRef.current = window.setTimeout(() => {
+        setExitingScreen(null);
+        transitionTimeoutRef.current = null;
+      }, 200);
+    }
+    return () => {
+      if (transitionTimeoutRef.current) clearTimeout(transitionTimeoutRef.current);
+    };
+  }, [screen]);
+
   // Keyboard routing refs mapping to current screen's handlers
   const lastDirHandlerRef = useRef<((dir: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT') => void) | null>(null);
   const lastAHandlerRef = useRef<(() => void) | null>(null);
@@ -316,8 +348,9 @@ export default function App() {
         const finalMon = fetchedMonRef.current;
         setActiveMon(finalMon);
         saveToHistory(finalMon);
-        // Summon complete -> Go to Core GAME HUB instead of Details directly!
-        setScreen('HUB');
+        // Summon complete -> Go directly to Export/Embed view with auto-copy badge
+        setAutoCopyBadge(true);
+        setScreen('EXPORT_EMBED');
         playRetroSound('summon');
       }
     }, 100);
@@ -381,6 +414,7 @@ export default function App() {
         setScreen('LEADERBOARD');
         break;
       case 'EXPORT_EMBED':
+        setAutoCopyBadge(false);
         setScreen('EXPORT_EMBED');
         break;
       case 'HISTORY':
@@ -394,6 +428,23 @@ export default function App() {
     }
   };
 
+  // View transition wrapper — applies enter/exit animations per screen
+  function ScreenView({ id, children, active }: { id: ScreenID; children: React.ReactNode; active?: boolean }) {
+    const isCurrent = active !== undefined ? active : id === screen;
+    const isExiting = id === exitingScreen;
+    if (!isCurrent && !isExiting) return null;
+
+    const isBattle = isBattleScreen(id);
+    const enterAnim = isBattle ? 'animate-battle-enter' : 'animate-view-enter';
+    const exitAnim = isBattle ? 'animate-battle-exit' : 'animate-view-exit';
+
+    return (
+      <div className={`w-full h-full ${isCurrent && !isExiting ? enterAnim : ''} ${isExiting ? `${exitAnim} absolute inset-0 pointer-events-none` : ''}`}>
+        {children}
+      </div>
+    );
+  }
+
   return (
     <ConsoleShell
       isSynced={!!activeMon}
@@ -406,52 +457,44 @@ export default function App() {
         }
       }}
     >
-      {screen === 'SPLASH' && (
-        <SplashView
-          onSummon={handleSummonInitiate}
-          onViewHistory={() => setScreen('HISTORY')}
-          hasHistory={historyList.length > 0}
-        />
-      )}
+      <ScreenView id="SPLASH">
+        <SplashView onSummon={handleSummonInitiate} />
+      </ScreenView>
 
-      {screen === 'SUMMONING' && (
-        <SummoningView
-          username={selectedUsername}
-          onFinished={handleSummonFinished}
-        />
-      )}
+      <ScreenView id="SUMMONING">
+        <SummoningView username={selectedUsername} onFinished={handleSummonFinished} />
+      </ScreenView>
 
-      {/* Central Interactive Game Hub View */}
-      {screen === 'HUB' && activeMon && (
+      <ScreenView id="HUB" active={screen === 'HUB' && !!activeMon}>
         <HubView
-          mon={activeMon}
+          mon={activeMon!}
           activeOnlineCount={onlineCount}
           onSelectOption={handleHubSelect}
           registerDirectionHandler={(h) => { lastDirHandlerRef.current = h; }}
           registerAHandler={(h) => { lastAHandlerRef.current = h; }}
           registerBHandler={(h) => { lastBHandlerRef.current = h; }}
         />
-      )}
+      </ScreenView>
 
-      {screen === 'DETAILS' && activeMon && (
+      <ScreenView id="DETAILS" active={screen === 'DETAILS' && !!activeMon}>
         <MonDetailsView
-          mon={activeMon}
+          mon={activeMon!}
           onBattle={() => setScreen('BATTLE')}
           onBack={() => setScreen('HUB')}
         />
-      )}
+      </ScreenView>
 
-      {screen === 'BATTLE' && activeMon && (
+      <ScreenView id="BATTLE" active={screen === 'BATTLE' && !!activeMon}>
         <BattleArenaView
-          playerMon={activeMon}
+          playerMon={activeMon!}
           onExit={() => setScreen('HUB')}
           registerDirectionHandler={(h) => { lastDirHandlerRef.current = h; }}
           registerAHandler={(h) => { lastAHandlerRef.current = h; }}
           registerBHandler={(h) => { lastBHandlerRef.current = h; }}
         />
-      )}
+      </ScreenView>
 
-      {screen === 'HISTORY' && (
+      <ScreenView id="HISTORY">
         <HistoryView
           history={historyList}
           onSelect={(mon) => {
@@ -464,20 +507,20 @@ export default function App() {
             else setScreen('SPLASH');
           }}
         />
-      )}
+      </ScreenView>
 
-      {screen === 'LEADERBOARD' && (
+      <ScreenView id="LEADERBOARD">
         <LeaderboardView
           onBack={() => setScreen('HUB')}
           registerDirectionHandler={(h) => { lastDirHandlerRef.current = h; }}
           registerAHandler={(h) => { lastAHandlerRef.current = h; }}
           registerBHandler={(h) => { lastBHandlerRef.current = h; }}
         />
-      )}
+      </ScreenView>
 
-      {screen === 'PVP_LOBBY' && activeMon && (
+      <ScreenView id="PVP_LOBBY" active={screen === 'PVP_LOBBY' && !!activeMon}>
         <PvpLobbyView
-          mon={activeMon}
+          mon={activeMon!}
           onlineCount={onlineCount}
           idlePlayers={idlePlayers}
           isSearching={isSearching}
@@ -489,12 +532,12 @@ export default function App() {
           registerAHandler={(h) => { lastAHandlerRef.current = h; }}
           registerBHandler={(h) => { lastBHandlerRef.current = h; }}
         />
-      )}
+      </ScreenView>
 
-      {screen === 'PVP_BATTLE' && activeMon && opponentMon && (
+      <ScreenView id="PVP_BATTLE" active={screen === 'PVP_BATTLE' && !!activeMon && !!opponentMon}>
         <PvpBattleView
-          playerMon={activeMon}
-          opponentMon={opponentMon}
+          playerMon={activeMon!}
+          opponentMon={opponentMon!}
           opponentName={opponentName}
           playerHP={playerHP}
           opponentHP={opponentHP}
@@ -509,27 +552,28 @@ export default function App() {
           registerAHandler={(h) => { lastAHandlerRef.current = h; }}
           registerBHandler={(h) => { lastBHandlerRef.current = h; }}
         />
-      )}
+      </ScreenView>
 
-      {screen === 'AI_BOSS_BATTLE' && activeMon && (
+      <ScreenView id="AI_BOSS_BATTLE" active={screen === 'AI_BOSS_BATTLE' && !!activeMon}>
         <AiBossBattleView
-          playerMon={activeMon}
+          playerMon={activeMon!}
           onExit={() => setScreen('HUB')}
           registerDirectionHandler={(h) => { lastDirHandlerRef.current = h; }}
           registerAHandler={(h) => { lastAHandlerRef.current = h; }}
           registerBHandler={(h) => { lastBHandlerRef.current = h; }}
         />
-      )}
+      </ScreenView>
 
-      {screen === 'EXPORT_EMBED' && activeMon && (
+      <ScreenView id="EXPORT_EMBED" active={screen === 'EXPORT_EMBED' && !!activeMon}>
         <ExportEmbedView
-          mon={activeMon}
+          mon={activeMon!}
           onBack={() => setScreen('HUB')}
           registerDirectionHandler={(h) => { lastDirHandlerRef.current = h; }}
           registerAHandler={(h) => { lastAHandlerRef.current = h; }}
           registerBHandler={(h) => { lastBHandlerRef.current = h; }}
+          autoCopy={autoCopyBadge}
         />
-      )}
+      </ScreenView>
     </ConsoleShell>
   );
 }
