@@ -1,14 +1,7 @@
 import { LeaderboardEntry } from './types';
+import { DEFAULT_LEADERBOARD, sortAndTruncateLeaderboard } from '../shared/leaderboard';
 
 const LEADERBOARD_KEY = 'leaderboard_data';
-
-const DEFAULT_LEADERBOARD: LeaderboardEntry[] = [
-  { username: 'SteveWoz', monName: 'WozniakPascal', level: 99, wins: 142, losses: 4, avatarUrl: 'https://github.com/woz.png' },
-  { username: 'LinusTorvalds', monName: 'LinuxDromad', level: 96, wins: 125, losses: 8, avatarUrl: 'https://github.com/torvalds.png' },
-  { username: 'AdaLovelace', monName: 'BernoulliFlyer', level: 95, wins: 96, losses: 2, avatarUrl: 'https://github.com/ada.png' },
-  { username: 'MargaretHamilton', monName: 'ApolloStack', level: 92, wins: 89, losses: 0, avatarUrl: 'https://github.com/margaret.png' },
-  { username: 'JamesGosling', monName: 'KoffeeSlime', level: 85, wins: 72, losses: 14, avatarUrl: 'https://github.com/gosling.png' },
-];
 
 export async function loadLeaderboard(kv: KVNamespace): Promise<LeaderboardEntry[]> {
   try {
@@ -55,8 +48,7 @@ export async function recordMatchResult(
   const loseEntry = getOrCreateEntry(loser.username, loser.monName, loser.level, loser.avatarUrl);
   loseEntry.losses += 1;
 
-  leaderboard.sort((a, b) => (b.wins - b.losses) - (a.wins - a.losses) || b.level - a.level);
-  const top = leaderboard.slice(0, 50);
+  const top = sortAndTruncateLeaderboard(leaderboard);
   await saveLeaderboard(kv, top);
   return top;
 }

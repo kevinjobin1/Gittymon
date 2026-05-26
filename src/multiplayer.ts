@@ -1,5 +1,5 @@
 import { recordMatchResult } from './leaderboard';
-import { Env, PlayerSession, RoomState } from './types';
+import { Env, PlayerSession, RoomState, RoastMon, WebSocketMessage } from './types';
 
 const RETRO_BOTS = [
   { username:'Hackerman-9000', name:'CobolSlayer', avatarUrl:'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=150&q=80', type:'Cobol-Legacy', level:52, bio:'Wrote the bios code in the Apollo 11 Lander inside a text editor with no syntax highlighting.', roast:'Still using tabs instead of spaces and compiles directly into binary using magnetic coils.', stats:{hp:100,attack:72,defense:68,speed:50,chaos:85}, moves:[{name:'PunchCard Strike',power:45,desc:'Overwhelms system cache with massive sequence of instructions.'},{name:'Direct Master Push',power:65,desc:'Bypasses Git staging entirely.'},{name:'Buffer Overflow',power:75,desc:'Flares memory leak causing critical damage to core subsystems.'},{name:'Sleep Deprivation',power:30,desc:'Consumes caffeine to repair 30 corrupted system HP.'}], joinedYear:'1979', publicRepos:104, followers:256, location:'Underground Datacenter', spriteSeed:'hacker-9000-apollo' },
@@ -7,19 +7,13 @@ const RETRO_BOTS = [
   { username:'Y2K-Glitch-Drake', name:'SyntaxReaper', avatarUrl:'https://images.unsplash.com/photo-1544256718-3bcf237f3974?auto=format&fit=crop&w=150&q=80', type:'Glitch-Abomination', level:65, bio:'Formed from 2 billion lines of unmerged JS commits locked inside a cold production bin.', roast:'Lacks documentation, has 47 critical vulnerability security alerts, and uses var instead of let.', stats:{hp:110,attack:85,defense:55,speed:60,chaos:95}, moves:[{name:'Force-Merge Chaos',power:75,desc:'Splices conflicting git branches and causes extreme system trauma.'},{name:'Var Declaration',power:45,desc:'Pollutes global scopes with memory leakage.'},{name:'Spit-Roast Critique',power:55,desc:'Unleashes cyber roasts that tear down opponent defense stat.'},{name:'Hot Fix Patch',power:25,desc:'Installs urgent security build to restore 35 HP.'}], joinedYear:'1999', publicRepos:89, followers:404, location:'Localhost:8080', spriteSeed:'glitchy-y2k-drake' }
 ];
 
-interface GameServerState {
-  sessions: Map<WebSocket, { username: string; mon: any; status: string; roomId: string | null; pNumber: number }>;
-  rooms: Map<string, RoomState>;
-}
-
 export class GameServer implements DurableObject {
-  private sessions: Map<WebSocket, { username: string; mon: any; status: string; roomId: string | null; pNumber: number }>;
+  private sessions: Map<WebSocket, PlayerSession>;
   private rooms: Map<string, RoomState>;
-  /** In-memory cache of players waiting for matchmaking (alarm will spawn AI bot after timeout) */
-  private pendingMatchmaking: { username: string; startTime: number }[] = [];
   private ctx: DurableObjectState;
   private env: Env;
-
+  /** In-memory cache of players waiting for matchmaking (alarm will spawn AI bot after timeout) */
+  private pendingMatchmaking: { username: string; startTime: number }[] = [];
   constructor(ctx: DurableObjectState, env: Env) {
     this.ctx = ctx;
     this.env = env;
@@ -35,8 +29,9 @@ export class GameServer implements DurableObject {
       const [client, server] = Object.values(pair);
 
       // Accept the WebSocket
-      this.sessions.set(server, { username: '', mon: null, status: 'idle', roomId: null, pNumber: 1 });
-      this.ctx.acceptWebSocket(server);
+      const session: PlayerSession = { ws: server, username: '', mon: null, status: 'idle', roomId: null, pNumber: 1 };
+      this.sessions.set(server, session);
+      (this as any).ctx.acceptWebSocket(server);
 
       // Send initial lobby update
       server.send(JSON.stringify({
@@ -52,7 +47,7 @@ export class GameServer implements DurableObject {
 
   async webSocketMessage(ws: WebSocket, message: string) {
     try {
-      const data = JSON.parse(message);
+      const data = JSON.parse(message) as WebSocketMessage;
       const session = this.sessions.get(ws);
       if (!session) return;
 
@@ -72,8 +67,7 @@ export class GameServer implements DurableObject {
           }
           session.status = 'searching';
 
-          // Find another searching player
-          let matchOpponent: { ws: WebSocket; username: string; mon: any; status: string; roomId: string | null; pNumber: number } | null = null;
+          let matchOpponent: { ws: WebSocket; username: string; mon: RoastMon; status: string; roomId: string | null; pNumber: number } | null = null;
           for (const [otherWs, otherSession] of this.sessions.entries()) {
             if (otherWs !== ws && otherSession.status === 'searching' && otherSession.username !== session.username) {
               matchOpponent = { ws: otherWs, ...otherSession };
@@ -242,18 +236,20 @@ export class GameServer implements DurableObject {
   /** Spawn an AI bot opponent for a player whose matchmaking timed out. */
   private spawnAiBotForSession(
     ws: WebSocket,
-    session: { username: string; mon: any; status: string; roomId: string | null; pNumber: number }
+    session: PlayerSession
   ): void {
+    if (!session.mon) return;
     const botMon = RETRO_BOTS[Math.floor(Math.random() * RETRO_BOTS.length)];
     const roomId = `pvp_room_bot_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     session.status = 'battling';
     session.roomId = roomId;
     session.pNumber = 1;
 
+    const p1Mon = session.mon!;
     const room: RoomState = {
       roomId,
       isAiMatch: true,
-      p1: { username: session.username, mon: session.mon, hp: Math.max(session.mon.stats.hp, 50), maxHp: Math.max(session.mon.stats.hp, 50), ws, action: null },
+      p1: { username: session.username, mon: p1Mon, hp: Math.max(p1Mon.stats.hp, 50), maxHp: Math.max(p1Mon.stats.hp, 50), ws, action: null },
       p2: { username: botMon.username, mon: botMon, hp: botMon.stats.hp, maxHp: botMon.stats.hp, ws: null, action: null },
       turn: 1,
     };

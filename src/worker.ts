@@ -2,7 +2,7 @@ import { loadLeaderboard, recordMatchResult } from './leaderboard';
 import { lookupSummonCache, addToSummonCache } from './summonCache';
 import { generateSvgCard, generateGifCard } from './embed';
 import { GameServer } from './multiplayer';
-import { Env, RoastMon, GithubData } from './types';
+import { Env, RoastMon, GithubData, GroqResponse, AiBossCommentRequest, BadgeResponse } from './types';
 import { SHELL_HTML } from './shellHtml';
 
 export { GameServer };
@@ -107,9 +107,10 @@ export default {
         headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' },
       });
 
-    } catch (err: any) {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
       console.error('Worker error:', err);
-      return new Response(JSON.stringify({ error: 'Internal Server Error', message: err.message }), {
+      return new Response(JSON.stringify({ error: 'Internal Server Error', message }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -186,7 +187,7 @@ async function handleApiRoute(request: Request, env: Env, ctx: ExecutionContext,
 
 // ======== Summon Handler ========
 async function handleSummon(request: Request, env: Env): Promise<Response> {
-  const body: any = await request.json();
+  const body = await request.json() as Record<string, unknown>;
   const { username } = body;
 
   if (!username || typeof username !== 'string' || !username.trim()) {
@@ -221,15 +222,15 @@ async function handleSummon(request: Request, env: Env): Promise<Response> {
     clearTimeout(timeoutId);
 
     if (ghResponse.ok) {
-      const data: any = await ghResponse.json();
+      const data = await ghResponse.json() as Record<string, unknown>;
       githubData = {
-        name: data.name || cleanUsername,
-        public_repos: data.public_repos ?? 10,
-        followers: data.followers ?? 2,
-        location: data.location || 'Unknown Coordinates',
-        joinedYear: data.created_at ? new Date(data.created_at).getFullYear().toString() : '2021',
-        bio: data.bio || 'Code without comments, coffee without milk.',
-        avatar_url: data.avatar_url || `https://github.com/${cleanUsername}.png`,
+        name: (data.name as string) || cleanUsername,
+        public_repos: (data.public_repos as number) ?? 10,
+        followers: (data.followers as number) ?? 2,
+        location: (data.location as string) || 'Unknown Coordinates',
+        joinedYear: data.created_at ? new Date(data.created_at as string).getFullYear().toString() : '2021',
+        bio: (data.bio as string) || 'Code without comments, coffee without milk.',
+        avatar_url: (data.avatar_url as string) || `https://github.com/${cleanUsername}.png`,
       };
     }
   } catch (err) {
@@ -305,7 +306,7 @@ Summon their customized 8-bit "ROAST-MON" creature!
     throw new Error(`Groq API error: ${response.status}`);
   }
 
-  const responseData: any = await response.json();
+  const responseData = await response.json() as GroqResponse;
   const responseText = responseData.choices?.[0]?.message?.content || '';
   const parsedData = JSON.parse(responseText.trim());
 
@@ -340,7 +341,7 @@ Summon their customized 8-bit "ROAST-MON" creature!
 
 // ======== AI Boss Comment Handler ========
 async function handleAiBossComment(request: Request, env: Env): Promise<Response> {
-  const body: any = await request.json();
+  const body = await request.json() as AiBossCommentRequest;
   const { username, monName, stats, action, bossHP } = body;
   if (!username) return new Response(JSON.stringify({ error: 'Username is required.' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
 
@@ -377,7 +378,7 @@ async function handleAiBossComment(request: Request, env: Env): Promise<Response
         max_tokens: 80,
       }),
     });
-    const data: any = await response.json();
+    const data = await response.json() as GroqResponse;
     const comment = data.choices?.[0]?.message?.content?.trim() || `My syntax analyzer refuses to even parse your ${cleanAction}!`;
     return new Response(JSON.stringify({ comment: `"${comment}"` }), { headers: { 'Content-Type': 'application/json' } });
   } catch (err) {

@@ -1,18 +1,21 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { RoastMon, ScreenID } from './types';
 import { ConsoleShell } from './components/ConsoleShell';
-import { SplashView } from './components/SplashView';
-import { SummoningView } from './components/SummoningView';
-import { MonDetailsView } from './components/MonDetailsView';
-import { BattleArenaView } from './components/BattleArenaView';
-import { HistoryView } from './components/HistoryView';
-import { HubView } from './components/HubView';
-import { LeaderboardView } from './components/LeaderboardView';
-import { PvpLobbyView } from './components/PvpLobbyView';
-import { PvpBattleView } from './components/PvpBattleView';
-import { AiBossBattleView } from './components/AiBossBattleView';
-import { ExportEmbedView } from './components/ExportEmbedView';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { playRetroSound, setBgmIntensity } from './utils/audio';
+
+// Lazy-loaded screen components — split on async boundaries
+const SplashView = lazy(() => import('./components/SplashView').then(m => ({ default: m.SplashView })));
+const SummoningView = lazy(() => import('./components/SummoningView').then(m => ({ default: m.SummoningView })));
+const MonDetailsView = lazy(() => import('./components/MonDetailsView').then(m => ({ default: m.MonDetailsView })));
+const BattleArenaView = lazy(() => import('./components/BattleArenaView').then(m => ({ default: m.BattleArenaView })));
+const HistoryView = lazy(() => import('./components/HistoryView').then(m => ({ default: m.HistoryView })));
+const HubView = lazy(() => import('./components/HubView').then(m => ({ default: m.HubView })));
+const LeaderboardView = lazy(() => import('./components/LeaderboardView').then(m => ({ default: m.LeaderboardView })));
+const PvpLobbyView = lazy(() => import('./components/PvpLobbyView').then(m => ({ default: m.PvpLobbyView })));
+const PvpBattleView = lazy(() => import('./components/PvpBattleView').then(m => ({ default: m.PvpBattleView })));
+const AiBossBattleView = lazy(() => import('./components/AiBossBattleView').then(m => ({ default: m.AiBossBattleView })));
+const ExportEmbedView = lazy(() => import('./components/ExportEmbedView').then(m => ({ default: m.ExportEmbedView })));
 
 export default function App() {
   const [screen, setScreen] = useState<ScreenID>('SPLASH');
@@ -27,7 +30,7 @@ export default function App() {
   const [autoCopyBadge, setAutoCopyBadge] = useState(false);
 
   const BATTLE_SCREENS: ScreenID[] = ['BATTLE', 'AI_BOSS_BATTLE', 'PVP_BATTLE'];
-  const isBattleScreen = (id: ScreenID) => BATTLE_SCREENS.includes(id);
+  const isBattleScreen = useCallback((id: ScreenID) => BATTLE_SCREENS.includes(id), []);
 
   // Screen transition animation state
   const [exitingScreen, setExitingScreen] = useState<ScreenID | null>(null);
@@ -445,135 +448,156 @@ export default function App() {
     );
   }
 
+  // Memoized handler registrars — stable references for child components
+  const registerDir = useCallback((h: ((dir: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT') => void) | null) => {
+    lastDirHandlerRef.current = h;
+  }, []);
+  const registerA = useCallback((h: (() => void) | null) => { lastAHandlerRef.current = h; }, []);
+  const registerB = useCallback((h: (() => void) | null) => { lastBHandlerRef.current = h; }, []);
+
+  // Memoized screen navigation callbacks
+  const goToHub = useCallback(() => setScreen('HUB'), []);
+  const goToBattle = useCallback(() => setScreen('BATTLE'), []);
+  const goToSplashOrHub = useCallback(() => {
+    if (activeMon) setScreen('HUB');
+    else setScreen('SPLASH');
+  }, [activeMon]);
+  const goToPvpLobby = useCallback(() => setScreen('PVP_LOBBY'), []);
+
+  // Stable direction callback for ConsoleShell
+  const handleDirectionPress = useCallback((dir: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT') => {
+    lastDirHandlerRef.current?.(dir);
+  }, []);
+
+  // Memoized onSelect for HistoryView
+  const handleHistorySelect = useCallback((mon: RoastMon) => {
+    setActiveMon(mon);
+    setScreen('HUB');
+  }, []);
+
   return (
     <ConsoleShell
       isSynced={!!activeMon}
       onPressA={handlePhysicalA}
       onPressB={handlePhysicalB}
       onPressSelect={handlePhysicalSelect}
-      onPressDirection={(dir) => {
-        if (lastDirHandlerRef.current) {
-          lastDirHandlerRef.current(dir);
-        }
-      }}
+      onPressDirection={handleDirectionPress}
     >
-      <ScreenView id="SPLASH">
-        <SplashView onSummon={handleSummonInitiate} />
-      </ScreenView>
+      <Suspense fallback={<div className="w-full h-full bg-[#f5f5f5] animate-pulse" />}>
+        <ErrorBoundary>
+          <ScreenView id="SPLASH">
+            <SplashView onSummon={handleSummonInitiate} />
+          </ScreenView>
 
-      <ScreenView id="SUMMONING">
-        <SummoningView username={selectedUsername} onFinished={handleSummonFinished} />
-      </ScreenView>
+          <ScreenView id="SUMMONING">
+            <SummoningView username={selectedUsername} onFinished={handleSummonFinished} />
+          </ScreenView>
 
-      <ScreenView id="HUB" active={screen === 'HUB' && !!activeMon}>
-        <HubView
-          mon={activeMon!}
-          activeOnlineCount={onlineCount}
-          onSelectOption={handleHubSelect}
-          registerDirectionHandler={(h) => { lastDirHandlerRef.current = h; }}
-          registerAHandler={(h) => { lastAHandlerRef.current = h; }}
-          registerBHandler={(h) => { lastBHandlerRef.current = h; }}
-        />
-      </ScreenView>
+          <ScreenView id="HUB" active={screen === 'HUB' && !!activeMon}>
+            <HubView
+              mon={activeMon!}
+              activeOnlineCount={onlineCount}
+              onSelectOption={handleHubSelect}
+              registerDirectionHandler={registerDir}
+              registerAHandler={registerA}
+              registerBHandler={registerB}
+            />
+          </ScreenView>
 
-      <ScreenView id="DETAILS" active={screen === 'DETAILS' && !!activeMon}>
-        <MonDetailsView
-          mon={activeMon!}
-          onBattle={() => setScreen('BATTLE')}
-          onBack={() => setScreen('HUB')}
-        />
-      </ScreenView>
+          <ScreenView id="DETAILS" active={screen === 'DETAILS' && !!activeMon}>
+            <MonDetailsView
+              mon={activeMon!}
+              onBattle={goToBattle}
+              onBack={goToHub}
+            />
+          </ScreenView>
 
-      <ScreenView id="BATTLE" active={screen === 'BATTLE' && !!activeMon}>
-        <BattleArenaView
-          playerMon={activeMon!}
-          onExit={() => setScreen('HUB')}
-          registerDirectionHandler={(h) => { lastDirHandlerRef.current = h; }}
-          registerAHandler={(h) => { lastAHandlerRef.current = h; }}
-          registerBHandler={(h) => { lastBHandlerRef.current = h; }}
-        />
-      </ScreenView>
+          <ScreenView id="BATTLE" active={screen === 'BATTLE' && !!activeMon}>
+            <BattleArenaView
+              playerMon={activeMon!}
+              onExit={goToHub}
+              registerDirectionHandler={registerDir}
+              registerAHandler={registerA}
+              registerBHandler={registerB}
+            />
+          </ScreenView>
 
-      <ScreenView id="HISTORY">
-        <HistoryView
-          history={historyList}
-          onSelect={(mon) => {
-            setActiveMon(mon);
-            setScreen('HUB');
-          }}
-          onClearIndex={handleClearIndex}
-          onBack={() => {
-            if (activeMon) setScreen('HUB');
-            else setScreen('SPLASH');
-          }}
-        />
-      </ScreenView>
+          <ScreenView id="HISTORY">
+            <HistoryView
+              history={historyList}
+              onSelect={handleHistorySelect}
+              onClearIndex={handleClearIndex}
+              onBack={goToSplashOrHub}
+            />
+          </ScreenView>
 
-      <ScreenView id="LEADERBOARD">
-        <LeaderboardView
-          onBack={() => setScreen('HUB')}
-          registerDirectionHandler={(h) => { lastDirHandlerRef.current = h; }}
-          registerAHandler={(h) => { lastAHandlerRef.current = h; }}
-          registerBHandler={(h) => { lastBHandlerRef.current = h; }}
-        />
-      </ScreenView>
+          <ScreenView id="LEADERBOARD">
+            <LeaderboardView
+              onBack={goToHub}
+              registerDirectionHandler={registerDir}
+              registerAHandler={registerA}
+              registerBHandler={registerB}
+            />
+          </ScreenView>
 
-      <ScreenView id="PVP_LOBBY" active={screen === 'PVP_LOBBY' && !!activeMon}>
-        <PvpLobbyView
-          mon={activeMon!}
-          onlineCount={onlineCount}
-          idlePlayers={idlePlayers}
-          isSearching={isSearching}
-          searchError={searchError}
-          onStartSearching={handleStartSearching}
-          onCancelSearching={handleCancelSearching}
-          onBack={() => setScreen('HUB')}
-          registerDirectionHandler={(h) => { lastDirHandlerRef.current = h; }}
-          registerAHandler={(h) => { lastAHandlerRef.current = h; }}
-          registerBHandler={(h) => { lastBHandlerRef.current = h; }}
-        />
-      </ScreenView>
+          <ScreenView id="PVP_LOBBY" active={screen === 'PVP_LOBBY' && !!activeMon}>
+            <PvpLobbyView
+              mon={activeMon!}
+              onlineCount={onlineCount}
+              idlePlayers={idlePlayers}
+              isSearching={isSearching}
+              searchError={searchError}
+              onStartSearching={handleStartSearching}
+              onCancelSearching={handleCancelSearching}
+              onBack={goToHub}
+              registerDirectionHandler={registerDir}
+              registerAHandler={registerA}
+              registerBHandler={registerB}
+            />
+          </ScreenView>
 
-      <ScreenView id="PVP_BATTLE" active={screen === 'PVP_BATTLE' && !!activeMon && !!opponentMon}>
-        <PvpBattleView
-          playerMon={activeMon!}
-          opponentMon={opponentMon!}
-          opponentName={opponentName}
-          playerHP={playerHP}
-          opponentHP={opponentHP}
-          isOver={isPvpOver}
-          winnerNickname={winnerNickname}
-          logs={pvpLogs}
-          lastActionSent={lastActionSent}
-          onSendAction={handleSendPvpAction}
-          onForfeit={handleForfeitPvp}
-          onExit={() => setScreen('PVP_LOBBY')}
-          registerDirectionHandler={(h) => { lastDirHandlerRef.current = h; }}
-          registerAHandler={(h) => { lastAHandlerRef.current = h; }}
-          registerBHandler={(h) => { lastBHandlerRef.current = h; }}
-        />
-      </ScreenView>
+          <ScreenView id="PVP_BATTLE" active={screen === 'PVP_BATTLE' && !!activeMon && !!opponentMon}>
+            <PvpBattleView
+              playerMon={activeMon!}
+              opponentMon={opponentMon!}
+              opponentName={opponentName}
+              playerHP={playerHP}
+              opponentHP={opponentHP}
+              isOver={isPvpOver}
+              winnerNickname={winnerNickname}
+              logs={pvpLogs}
+              lastActionSent={lastActionSent}
+              onSendAction={handleSendPvpAction}
+              onForfeit={handleForfeitPvp}
+              onExit={goToPvpLobby}
+              registerDirectionHandler={registerDir}
+              registerAHandler={registerA}
+              registerBHandler={registerB}
+            />
+          </ScreenView>
 
-      <ScreenView id="AI_BOSS_BATTLE" active={screen === 'AI_BOSS_BATTLE' && !!activeMon}>
-        <AiBossBattleView
-          playerMon={activeMon!}
-          onExit={() => setScreen('HUB')}
-          registerDirectionHandler={(h) => { lastDirHandlerRef.current = h; }}
-          registerAHandler={(h) => { lastAHandlerRef.current = h; }}
-          registerBHandler={(h) => { lastBHandlerRef.current = h; }}
-        />
-      </ScreenView>
+          <ScreenView id="AI_BOSS_BATTLE" active={screen === 'AI_BOSS_BATTLE' && !!activeMon}>
+            <AiBossBattleView
+              playerMon={activeMon!}
+              onExit={goToHub}
+              registerDirectionHandler={registerDir}
+              registerAHandler={registerA}
+              registerBHandler={registerB}
+            />
+          </ScreenView>
 
-      <ScreenView id="EXPORT_EMBED" active={screen === 'EXPORT_EMBED' && !!activeMon}>
-        <ExportEmbedView
-          mon={activeMon!}
-          onBack={() => setScreen('HUB')}
-          registerDirectionHandler={(h) => { lastDirHandlerRef.current = h; }}
-          registerAHandler={(h) => { lastAHandlerRef.current = h; }}
-          registerBHandler={(h) => { lastBHandlerRef.current = h; }}
-          autoCopy={autoCopyBadge}
-        />
-      </ScreenView>
+          <ScreenView id="EXPORT_EMBED" active={screen === 'EXPORT_EMBED' && !!activeMon}>
+            <ExportEmbedView
+              mon={activeMon!}
+              onBack={goToHub}
+              registerDirectionHandler={registerDir}
+              registerAHandler={registerA}
+              registerBHandler={registerB}
+              autoCopy={autoCopyBadge}
+            />
+          </ScreenView>
+        </ErrorBoundary>
+      </Suspense>
     </ConsoleShell>
   );
 }

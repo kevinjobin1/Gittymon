@@ -1,60 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-
-export interface LeaderboardEntry {
-  username: string;
-  monName: string;
-  level: number;
-  wins: number;
-  losses: number;
-  avatarUrl: string;
-}
+import { DEFAULT_LEADERBOARD, sortAndTruncateLeaderboard } from '../shared/leaderboard.js';
+import type { LeaderboardEntry } from '../shared/types.js';
 
 const LEADERBOARD_FILE = path.join(process.cwd(), 'leaderboard.json');
-
-// Initialize leaderboard with hilarious fictional legends
-const DEFAULT_LEADERBOARD: LeaderboardEntry[] = [
-  {
-    username: 'SteveWoz',
-    monName: 'WozniakPascal',
-    level: 99,
-    wins: 142,
-    losses: 4,
-    avatarUrl: 'https://github.com/woz.png',
-  },
-  {
-    username: 'LinusTorvalds',
-    monName: 'LinuxDromad',
-    level: 96,
-    wins: 125,
-    losses: 8,
-    avatarUrl: 'https://github.com/torvalds.png',
-  },
-  {
-    username: 'AdaLovelace',
-    monName: 'BernoulliFlyer',
-    level: 95,
-    wins: 96,
-    losses: 2,
-    avatarUrl: 'https://github.com/ada.png',
-  },
-  {
-    username: 'MargaretHamilton',
-    monName: 'ApolloStack',
-    level: 92,
-    wins: 89,
-    losses: 0,
-    avatarUrl: 'https://github.com/margaret.png',
-  },
-  {
-    username: 'JamesGosling',
-    monName: 'KoffeeSlime',
-    level: 85,
-    wins: 72,
-    losses: 14,
-    avatarUrl: 'https://github.com/gosling.png',
-  }
-];
 
 export function loadLeaderboard(): LeaderboardEntry[] {
   try {
@@ -113,11 +62,7 @@ export function recordMatchResult(
   const loseEntry = getOrCreateEntry(loser.username, loser.monName, loser.level, loser.avatarUrl);
   loseEntry.losses += 1;
 
-  // Sort leaderboard by net wins (wins - losses) descending, then level descending
-  leaderboard.sort((a, b) => (b.wins - b.losses) - (a.wins - a.losses) || b.level - a.level);
-
-  // Truncate to top 50
-  const topLeaderboard = leaderboard.slice(0, 50);
+  const topLeaderboard = sortAndTruncateLeaderboard(leaderboard);
 
   saveLeaderboard(topLeaderboard);
   return topLeaderboard;

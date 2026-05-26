@@ -3,6 +3,15 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/kevinjobin1/Gittymon/actions/workflows/ci.yml">
+    <img src="https://github.com/kevinjobin1/Gittymon/actions/workflows/ci.yml/badge.svg" alt="CI" />
+  </a>
+  <a href="https://codecov.io/gh/kevinjobin1/Gittymon">
+    <img src="https://codecov.io/gh/kevinjobin1/Gittymon/branch/main/graph/badge.svg" alt="codecov" />
+  </a>
+</p>
+
+<p align="center">
   <strong>Turn any GitHub profile into a savage 8-bit Roast-mon monster — battle bugs, fight AI bosses, and climb the leaderboard. All inside a faithfully recreated Nintendo GBA SP clamshell console.</strong>
 </p>
 
