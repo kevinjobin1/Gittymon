@@ -45,14 +45,19 @@ export const SERVER_PALETTE_NAMES = Object.keys(SERVER_PALETTES);
 /*  Full detailed sprite grid (24×24) - used for SVG cards             */
 /* ------------------------------------------------------------------ */
 
+export type ServerPaletteName = keyof typeof SERVER_PALETTES;
+
 export function buildServerSpriteGrid(
   seed: string,
   frame?: number,
+  paletteOverride?: ServerPaletteName,
 ): ServerSpriteResult {
   const hash = getSeedHash(seed);
   const lcg = new LCG(hash);
 
-  const paletteName = SERVER_PALETTE_NAMES[lcg.nextRange(0, SERVER_PALETTE_NAMES.length)];
+  const paletteName = paletteOverride && SERVER_PALETTES[paletteOverride]
+    ? paletteOverride
+    : SERVER_PALETTE_NAMES[lcg.nextRange(0, SERVER_PALETTE_NAMES.length)];
   const palette = SERVER_PALETTES[paletteName];
 
   const bodyShape   = lcg.nextRange(0, 5);

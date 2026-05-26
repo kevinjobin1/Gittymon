@@ -143,7 +143,8 @@ async function handleApiRoute(request: Request, env: Env, ctx: ExecutionContext,
   // GET /api/embed/svg/:username
   const svgMatch = path.match(/^\/api\/embed\/svg\/([^/]+)$/);
   if (svgMatch) {
-    const svg = await generateSvgCard(svgMatch[1], env);
+    const palette = url.searchParams.get('palette') || undefined;
+    const svg = await generateSvgCard(svgMatch[1], env, palette);
     return new Response(svg, {
       headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'max-age=60, s-maxage=120' },
     });
@@ -152,7 +153,8 @@ async function handleApiRoute(request: Request, env: Env, ctx: ExecutionContext,
   // GET /api/embed/:username.svg
   const svgAltMatch = path.match(/^\/api\/embed\/([^/]+)\.svg$/);
   if (svgAltMatch) {
-    const svg = await generateSvgCard(svgAltMatch[1], env);
+    const palette = url.searchParams.get('palette') || undefined;
+    const svg = await generateSvgCard(svgAltMatch[1], env, palette);
     return new Response(svg, {
       headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'max-age=60, s-maxage=120' },
     });
@@ -161,7 +163,8 @@ async function handleApiRoute(request: Request, env: Env, ctx: ExecutionContext,
   // GET /api/embed/gif/:username
   const gifMatch = path.match(/^\/api\/embed\/gif\/([^/]+)$/);
   if (gifMatch) {
-    const gif = await generateGifCard(gifMatch[1], env);
+    const palette = url.searchParams.get('palette') || undefined;
+    const gif = await generateGifCard(gifMatch[1], env, palette);
     return new Response(gif, {
       headers: { 'Content-Type': 'image/gif', 'Cache-Control': 'max-age=60, s-maxage=120' },
     });
@@ -170,7 +173,8 @@ async function handleApiRoute(request: Request, env: Env, ctx: ExecutionContext,
   // GET /api/embed/:username.gif
   const gifAltMatch = path.match(/^\/api\/embed\/([^/]+)\.gif$/);
   if (gifAltMatch) {
-    const gif = await generateGifCard(gifAltMatch[1], env);
+    const palette = url.searchParams.get('palette') || undefined;
+    const gif = await generateGifCard(gifAltMatch[1], env, palette);
     return new Response(gif, {
       headers: { 'Content-Type': 'image/gif', 'Cache-Control': 'max-age=60, s-maxage=120' },
     });

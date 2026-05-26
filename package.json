@@ -18,7 +18,9 @@
     "test:e2e:update": "playwright test --update-snapshots",
     "test:watch": "vitest",
     "preview": "npm run build && wrangler dev",
-    "worker:dev": "npx wrangler dev"
+    "worker:dev": "npx wrangler dev",
+    "social-preview": "npx tsx scripts/generate-social-preview.ts",
+    "example-cards": "npx tsx scripts/generate-example-cards.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",
@@ -49,6 +51,7 @@
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
     "jsdom": "^29.1.1",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",

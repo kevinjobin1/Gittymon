@@ -207,7 +207,8 @@ app.get('/api/embed/svg/:username', (req, res) => {
   if (!username) {
     return res.status(400).send('Username parameter required');
   }
-  const svg = generateSvgCard(username);
+  const palette = typeof req.query.palette === 'string' ? req.query.palette : undefined;
+  const svg = generateSvgCard(username, palette);
   res.setHeader('Content-Type', 'image/svg+xml');
   res.setHeader('Cache-Control', 'max-age=60, s-maxage=120, stale-while-revalidate=600');
   return res.send(svg);
@@ -219,7 +220,8 @@ app.get('/api/embed/:username.svg', (req, res) => {
   if (!username) {
     return res.status(400).send('Username parameter required');
   }
-  const svg = generateSvgCard(username);
+  const palette = typeof req.query.palette === 'string' ? req.query.palette : undefined;
+  const svg = generateSvgCard(username, palette);
   res.setHeader('Content-Type', 'image/svg+xml');
   res.setHeader('Cache-Control', 'max-age=60, s-maxage=120, stale-while-revalidate=600');
   return res.send(svg);
@@ -235,7 +237,8 @@ app.get('/api/embed/gif/:username', (req, res) => {
     return res.status(400).send('Username parameter required');
   }
   try {
-    const gifBuffer = generateGifCard(username);
+    const palette = typeof req.query.palette === 'string' ? req.query.palette : undefined;
+    const gifBuffer = generateGifCard(username, palette);
     res.setHeader('Content-Type', 'image/gif');
     res.setHeader('Cache-Control', 'max-age=60, s-maxage=120, stale-while-revalidate=600');
     return res.send(gifBuffer);
@@ -252,7 +255,8 @@ app.get('/api/embed/:username.gif', (req, res) => {
     return res.status(400).send('Username parameter required');
   }
   try {
-    const gifBuffer = generateGifCard(username);
+    const palette = typeof req.query.palette === 'string' ? req.query.palette : undefined;
+    const gifBuffer = generateGifCard(username, palette);
     res.setHeader('Content-Type', 'image/gif');
     res.setHeader('Cache-Control', 'max-age=60, s-maxage=120, stale-while-revalidate=600');
     return res.send(gifBuffer);

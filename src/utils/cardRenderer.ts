@@ -1,4 +1,5 @@
 import { buildSpriteGrid, drawSpriteOnCanvas } from './procGen';
+import type { PaletteName } from './procGen';
 
 // Wrap text at a character limit
 function wrapText(text: string, maxLen: number): string[] {
@@ -23,11 +24,17 @@ export interface CardData {
   spriteSeed: string;
   wins?: number;
   losses?: number;
+  publicRepos?: number;
+  followers?: number;
+  joinedYear?: string;
+  location?: string;
+  moves?: Array<{ name: string; power: number; desc: string }>;
+  paletteOverride?: PaletteName;
 }
 
 /**
- * Draw a Pokémon TCG-inspired card on a 460×220 canvas.
- * Clean layout — big artwork, bold text, minimal clutter.
+ * Draw a MonDetailsView-style card on a 460×220 canvas.
+ * White card with dark border — sprite on left, info/stats/moves on right.
  */
 export function drawCardFrame(
   canvas: HTMLCanvasElement,
@@ -41,186 +48,237 @@ export function drawCardFrame(
   const H = 220;
   ctx.clearRect(0, 0, W, H);
 
-  // ── Background ──
-  const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
-  bgGrad.addColorStop(0, '#0f172a');
-  bgGrad.addColorStop(0.5, '#0a0d16');
-  bgGrad.addColorStop(1, '#05080f');
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, W, H);
-
-  // Subtle card shine (top highlight)
-  const shineGrad = ctx.createRadialGradient(W / 2, 40, 10, W / 2, 40, 220);
-  shineGrad.addColorStop(0, 'rgba(255,255,255,0.04)');
-  shineGrad.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = shineGrad;
+  // ── White Background ──
+  ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, W, H);
 
   // ── Card Border ──
-  ctx.strokeStyle = '#27272a';
+  ctx.strokeStyle = '#1a1a1a';
   ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.roundRect(3, 3, W - 6, H - 6, 10);
-  ctx.stroke();
+  ctx.strokeRect(1, 1, W - 2, H - 2);
 
-  // Colored top accent bar (signature crimson)
-  ctx.fillStyle = '#7f001c';
-  ctx.fillRect(4, 4, W - 8, 3);
+  // ── Header background strip ──
+  ctx.fillStyle = '#fafafa';
+  ctx.fillRect(2, 2, W - 4, 26);
 
-  // ── Top Strip: Name + Level + HP ──
-  // Name (left, big)
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 18px monospace';
-  ctx.textAlign = 'left';
-  const displayName = data.monName.length > 16 ? data.monName.slice(0, 16) : data.monName;
-  ctx.fillText(displayName.toUpperCase(), 16, 24);
-
-  // Level + HP badge group (right)
+  // ── Header: Name (left) + LV (right) ──
+  ctx.textBaseline = 'middle';
   ctx.fillStyle = '#1a1a1a';
-  ctx.beginPath();
-  ctx.roundRect(W - 120, 8, 108, 18, 5);
-  ctx.fill();
+  ctx.font = 'bold 13px monospace';
+  ctx.textAlign = 'left';
+  const displayName = data.monName.length > 18 ? data.monName.slice(0, 18) : data.monName;
+  ctx.fillText(displayName.toUpperCase(), 10, 16);
 
-  ctx.fillStyle = '#e2dfde';
+  ctx.fillStyle = '#7f001c';
   ctx.font = 'bold 11px monospace';
-  ctx.textAlign = 'center';
+  ctx.textAlign = 'right';
+  ctx.fillText(`LV ${data.level}`, W - 10, 16);
 
-  // HP text with heart
-  ctx.fillStyle = '#ef4444';
-  ctx.font = 'bold 11px monospace';
-  ctx.fillText('♥', W - 112, 22);
-  ctx.fillStyle = '#ffffff';
-  ctx.fillText(`${data.stats.hp}`, W - 98, 22);
-
-  // Separator
-  ctx.fillStyle = '#52525b';
-  ctx.fillText('|', W - 76, 22);
-
-  // Level
-  ctx.fillStyle = '#e2dfde';
-  ctx.font = 'bold 11px monospace';
-  ctx.fillText(`LV${data.level}`, W - 58, 22);
-
-  // ── Separator line ──
-  ctx.strokeStyle = '#1e293b';
+  // ── Separator line under header ──
+  ctx.strokeStyle = '#1a1a1a';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(12, 34);
-  ctx.lineTo(448, 34);
+  ctx.moveTo(4, 29);
+  ctx.lineTo(W - 4, 29);
   ctx.stroke();
 
-  // ── Sprite (big, centered) ──
-  // Artwork panel — light enough that dark sprite outlines are clearly visible
-  ctx.fillStyle = '#475569';
-  ctx.beginPath();
-  ctx.roundRect(140, 34, 180, 108, 8);
-  ctx.fill();
+  // ── SPRITE (left, 96×96 with border) ──
+  const spriteX = 8;
+  const spriteY = 34;
 
-  const spriteResult = buildSpriteGrid(data.spriteSeed, frame);
-  const spriteSize = 24 * 4; // pixelSize=4 → 96px
-  const spriteX = Math.floor((W - spriteSize) / 2);
-  const spriteY = 40;
+  // Sprite background
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(spriteX, spriteY, 96, 96);
+
+  // Sprite border
+  ctx.strokeStyle = '#1a1a1a';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(spriteX, spriteY, 96, 96);
+
+  const spriteResult = buildSpriteGrid(data.spriteSeed, frame, data.paletteOverride);
   drawSpriteOnCanvas(ctx, spriteResult, spriteX, spriteY, 4, frame);
 
-  // ── Type Badge (below sprite) ──
-  const trimmedType = data.type.length > 16 ? data.type.slice(0, 16) : data.type;
-  const typeLabel = trimmedType.toUpperCase();
-  ctx.font = 'bold 7px monospace';
-  const typeW = ctx.measureText(typeLabel).width + 16;
-  const typeX = W / 2 - typeW / 2;
-
-  ctx.fillStyle = 'rgba(127, 0, 28, 0.15)';
-  ctx.beginPath();
-  ctx.roundRect(typeX, 142, typeW, 14, 7);
-  ctx.fill();
-  ctx.strokeStyle = '#7f001c';
-  ctx.lineWidth = 0.5;
-  ctx.beginPath();
-  ctx.roundRect(typeX, 142, typeW, 14, 7);
-  ctx.stroke();
-  ctx.fillStyle = '#7f001c';
-  ctx.textAlign = 'center';
-  ctx.font = 'bold 7px monospace';
-  ctx.fillText(typeLabel, W / 2, 153);
-
-  // ── Stats Row ──
-  const statsY = 164;
-
-  // HP bar
-  ctx.textAlign = 'left';
-  ctx.fillStyle = '#a1a1aa';
-  ctx.font = 'bold 7px monospace';
-  ctx.fillText('HP', 16, statsY + 6);
-
-  ctx.fillStyle = '#27272a';
-  ctx.beginPath();
-  ctx.roundRect(34, statsY, 80, 10, 4);
-  ctx.fill();
-  const hpPct = Math.min(100, data.stats.hp) / 100;
-  ctx.fillStyle = hpPct > 0.5 ? '#22c55e' : hpPct > 0.25 ? '#eab308' : '#ef4444';
-  ctx.beginPath();
-  ctx.roundRect(34, statsY, Math.max(4, Math.floor(80 * hpPct)), 10, 4);
-  ctx.fill();
-
+  // Palette badge on sprite (small, bottom-right)
+  const paletteBadge = data.paletteOverride || 'DMG';
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 7px monospace';
-  ctx.textAlign = 'left';
-  ctx.fillText(`${data.stats.hp}`, 40, statsY + 8);
+  ctx.fillRect(spriteX + 72, spriteY + 94, 22, 8);
+  ctx.strokeStyle = '#1a1a1a';
+  ctx.lineWidth = 0.5;
+  ctx.strokeRect(spriteX + 72, spriteY + 94, 22, 8);
+  ctx.fillStyle = '#1a1a1a';
+  ctx.font = 'bold 5px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(`${paletteBadge.toUpperCase()} ◈`, spriteX + 83, spriteY + 98);
 
-  // ATK / DEF / SPD compact
-  const statLabels = [
-    { label: 'ATK', val: data.stats.attack, x: 140 },
-    { label: 'DEF', val: data.stats.defense, x: 210 },
-    { label: 'SPD', val: data.stats.speed, x: 280 },
-    { label: 'CHA', val: data.stats.chaos, x: 350 },
+  // ── RIGHT PANEL: Info (starting right of sprite) ──
+  const infoX = 114;
+  let infoY = 40;
+
+  ctx.textBaseline = 'top';
+  ctx.textAlign = 'left';
+
+  // TYPE
+  ctx.fillStyle = '#6b7280';
+  ctx.font = 'bold 7px monospace';
+  ctx.fillText('TYPE:', infoX, infoY);
+  const typeText = data.type.length > 20 ? data.type.slice(0, 20) : data.type;
+  ctx.fillStyle = '#7f001c';
+  ctx.font = 'bold 7px monospace';
+  ctx.fillText(typeText.toUpperCase(), infoX + 30, infoY);
+  infoY += 13;
+
+  // REPOS / FOLLOWER
+  ctx.fillStyle = '#6b7280';
+  ctx.font = 'bold 7px monospace';
+  ctx.fillText('REPOS/FOLLOWER:', infoX, infoY);
+  ctx.fillStyle = '#1a1a1a';
+  ctx.font = 'bold 7px monospace';
+  ctx.fillText(`${data.publicRepos ?? '?'} / ${data.followers ?? '?'}`, infoX + 78, infoY);
+  infoY += 13;
+
+  // BORN IN
+  ctx.fillStyle = '#6b7280';
+  ctx.font = 'bold 7px monospace';
+  ctx.fillText('BORN IN:', infoX, infoY);
+  ctx.fillStyle = '#1a1a1a';
+  ctx.font = 'bold 7px monospace';
+  const loc = data.location ? data.location.split(',')[0].slice(0, 10) : '?';
+  ctx.fillText(`${data.joinedYear ?? '?'} @ ${loc}`, infoX + 44, infoY);
+  infoY += 16;
+
+  // ── Compact Stat Bars (5 rows) ──
+  const statEntries: Array<[string, number]> = [
+    ['HP', data.stats.hp],
+    ['ATK', data.stats.attack],
+    ['DEF', data.stats.defense],
+    ['SPD', data.stats.speed],
+    ['CHA', data.stats.chaos],
   ];
 
-  statLabels.forEach((s) => {
+  const barMaxWidth = 160;
+  const barHeight = 8;
+  const barYStart = infoY;
+
+  statEntries.forEach(([label, val], i) => {
+    const y = barYStart + i * (barHeight + 3);
+
+    // Label
+    ctx.fillStyle = '#6b7280';
+    ctx.font = 'bold 6px monospace';
+    ctx.fillText(label, infoX, y);
+
+    // Bar background
+    ctx.fillStyle = '#f3f4f6';
+    ctx.strokeStyle = '#d1d5db';
+    ctx.lineWidth = 0.5;
+    const barX = infoX + 24;
+    ctx.fillRect(barX, y, barMaxWidth, barHeight);
+    ctx.strokeRect(barX, y, barMaxWidth, barHeight);
+
+    // Bar filled segments (8 segments, each 12.5%)
+    const segments = 8;
+    const segW = Math.floor(barMaxWidth / segments);
+    for (let s = 0; s < segments; s++) {
+      const blockMax = (s + 1) * 12.5;
+      if (val >= blockMax) {
+        ctx.fillStyle = label === 'CHA' ? '#7f001c' : '#1a1a1a';
+        ctx.fillRect(barX + s * segW, y + 1, segW - 1, barHeight - 2);
+      }
+    }
+
+    // Value
+    ctx.fillStyle = '#1a1a1a';
+    ctx.font = 'bold 6px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(`${val}`, barX + barMaxWidth + 18, y);
     ctx.textAlign = 'left';
-    ctx.fillStyle = '#71717a';
-    ctx.font = 'bold 6.5px monospace';
-    ctx.fillText(s.label, s.x, statsY + 6);
-    ctx.fillStyle = '#e2dfde';
-    ctx.font = 'bold 8px monospace';
-    ctx.fillText(`${s.val}`, s.x + 26, statsY + 6);
   });
 
-  // W/L record (right edge)
-  ctx.textAlign = 'right';
-  ctx.fillStyle = '#52525b';
-  ctx.font = 'bold 7px monospace';
-  ctx.fillText(`W:${data.wins ?? 0} L:${data.losses ?? 0}`, 444, statsY + 6);
+  infoY = barYStart + 5 * (barHeight + 3) + 4;
 
-  // ── Roast / Description Box ──
-  ctx.fillStyle = '#1e1e24';
-  ctx.beginPath();
-  ctx.roundRect(16, 180, 428, 24, 4);
-  ctx.fill();
-  ctx.strokeStyle = '#334155';
+  // ── Compact Moves ──
+  if (data.moves && data.moves.length > 0) {
+    let moveX = infoX;
+    let moveRowY = infoY;
+
+    data.moves.forEach((move) => {
+      const moveText = `${move.name.toUpperCase()} P${move.power}`;
+      ctx.font = 'bold 5.5px monospace';
+      const textW = ctx.measureText(moveText).width + 8;
+
+      // Wrap to next row if needed
+      if (moveX + textW > W - 8) {
+        moveX = infoX;
+        moveRowY += 10;
+      }
+
+      // Pill background
+      ctx.fillStyle = '#f3f4f6';
+      ctx.strokeStyle = '#d1d5db';
+      ctx.lineWidth = 0.5;
+      const pillH = 8;
+      ctx.fillRect(moveX, moveRowY, textW, pillH);
+      ctx.strokeRect(moveX, moveRowY, textW, pillH);
+
+      // Move name (crimson) + power (gray)
+      ctx.textBaseline = 'middle';
+      const nameW = ctx.measureText(move.name.toUpperCase()).width;
+      ctx.fillStyle = '#7f001c';
+      ctx.font = 'bold 5.5px monospace';
+      ctx.fillText(move.name.toUpperCase(), moveX + 3, moveRowY + pillH / 2);
+      ctx.fillStyle = '#9ca3af';
+      ctx.fillText(`P${move.power}`, moveX + 3 + nameW + 2, moveRowY + pillH / 2);
+
+      moveX += textW + 2;
+    });
+  }
+
+  // ── Dashed separator before roast ──
+  const dashY = 167;
+  ctx.strokeStyle = '#d1d5db';
   ctx.lineWidth = 0.5;
+  ctx.setLineDash([3, 3]);
   ctx.beginPath();
-  ctx.roundRect(16, 180, 428, 24, 4);
+  ctx.moveTo(8, dashY);
+  ctx.lineTo(W - 8, dashY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // ── Roast ──
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = '#6b7280';
+  ctx.font = 'italic 6.5px monospace';
+  ctx.textAlign = 'left';
+  const roastLines = wrapText(`"${data.roast}"`, 60).slice(0, 2);
+  roastLines.forEach((line, i) => {
+    ctx.fillText(line, 8, dashY + 4 + i * 9);
+  });
+
+  // ── Footer separator ──
+  const footerY = 192;
+  ctx.strokeStyle = '#1a1a1a';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(4, footerY);
+  ctx.lineTo(W - 4, footerY);
   ctx.stroke();
 
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#a1a1aa';
-  ctx.font = 'italic 7.5px monospace';
-  const roastLines = wrapText(data.roast.toUpperCase(), 48).slice(0, 2);
-  roastLines.forEach((line, i) => {
-    ctx.fillText(line, W / 2, 194 + i * 8);
-  });
+  // ── Footer background ──
+  ctx.fillStyle = '#f5f5f5';
+  ctx.fillRect(2, footerY + 1, W - 4, H - footerY - 3);
 
-  // ── Footer ──
+  // ── Footer: W/L (left) + @username (right) ──
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#6b7280';
+  ctx.font = 'bold 7px monospace';
   ctx.textAlign = 'left';
-  ctx.fillStyle = '#52525b';
-  ctx.font = 'bold 6.5px monospace';
-  ctx.fillText(`@${data.username.toUpperCase()}`, 16, 214);
+  ctx.fillText(`W:${data.wins ?? 0} L:${data.losses ?? 0}`, 8, footerY + 13);
 
-  ctx.textAlign = 'right';
   ctx.fillStyle = '#7f001c';
   ctx.font = 'bold 7px monospace';
-  ctx.fillText('⚡ GITTYMON', 444, 214);
-  ctx.textAlign = 'left';
+  ctx.textAlign = 'right';
+  ctx.fillText(`@${data.username.toUpperCase()}`, W - 8, footerY + 13);
 }
 
 // Render a static card (frame 0) and return the canvas
@@ -250,14 +308,13 @@ export function downloadCardAsPng(data: CardData, filename?: string) {
 
 /**
  * Generate a full inline SVG string of the card from CardData.
- * Matches the TCG-inspired canvas design — same layout, colors, sparkles.
+ * Matches the MonDetailsView-style canvas design.
  */
 export function generateCardSvg(data: CardData): string {
   const W = 460;
   const H = 220;
 
-  const spriteResult = buildSpriteGrid(data.spriteSeed, 0);
-  const [outlineColor, bodyColor, lightColor, accentColor] = spriteResult.palette;
+  const spriteResult = buildSpriteGrid(data.spriteSeed, 0, data.paletteOverride);
   const paletteColors = spriteResult.palette;
   const grid = spriteResult.grid;
 
@@ -277,89 +334,160 @@ export function generateCardSvg(data: CardData): string {
   }
 
   // ── Roast lines ──
-  const roastLines = wrapText(data.roast.toUpperCase(), 48).slice(0, 2);
+  const roastLines = wrapText(`"${data.roast}"`, 60).slice(0, 2);
   let roastSvg = '';
   roastLines.forEach((line, i) => {
-    roastSvg += `<text x="230" y="${194 + i * 8}" fill="#a1a1aa" font-family="monospace" font-size="7.5" font-style="italic" text-anchor="middle">${escapeXml(line)}</text>\n`;
+    roastSvg += `<text x="8" y="${175 + i * 9}" fill="#6b7280" font-family="monospace" font-size="6.5" font-style="italic">${escapeXml(line)}</text>\n`;
   });
 
-  // ── Type label ──
-  const trimmedType = data.type.length > 16 ? data.type.slice(0, 16).toUpperCase() : data.type.toUpperCase();
-  const typeW = Math.max(40, trimmedType.length * 4.5 + 16);
-  const typeX = (W - typeW) / 2;
+  // ── Info field values ──
+  const typeText = data.type.length > 20 ? data.type.slice(0, 20) : data.type;
+  const loc = data.location ? data.location.split(',')[0].slice(0, 10) : '?';
+  const displayName = data.monName.length > 18 ? data.monName.slice(0, 18) : data.monName;
+  const paletteBadge = (data.paletteOverride || 'DMG').toUpperCase();
 
-  // ── HP bar color ──
-  const hpPct = Math.min(100, data.stats.hp) / 100;
-  const hpColor = hpPct > 0.5 ? '#22c55e' : hpPct > 0.25 ? '#eab308' : '#ef4444';
-  const hpW = Math.max(4, Math.floor(80 * hpPct));
+  // ── Stat bars ──
+  const statEntries: Array<[string, number]> = [
+    ['HP', data.stats.hp],
+    ['ATK', data.stats.attack],
+    ['DEF', data.stats.defense],
+    ['SPD', data.stats.speed],
+    ['CHA', data.stats.chaos],
+  ];
 
-  const displayName = data.monName.length > 16 ? data.monName.slice(0, 16) : data.monName;
+  let statBarsSvg = '';
+  const barMaxW = 160;
+  const barH = 8;
+  const segments = 8;
+  const segW = Math.floor(barMaxW / segments);
+
+  statEntries.forEach(([label, val], i) => {
+    const y = 82 + i * (barH + 3);
+    // Label
+    statBarsSvg += `<text x="114" y="${y + 6}" fill="#6b7280" font-family="monospace" font-size="6" font-weight="bold">${label}</text>\n`;
+    // Bar bg
+    statBarsSvg += `<rect x="138" y="${y}" width="${barMaxW}" height="${barH}" fill="#f3f4f6" stroke="#d1d5db" stroke-width="0.5" />\n`;
+    // Filled segments
+    for (let s = 0; s < segments; s++) {
+      const blockMax = (s + 1) * 12.5;
+      if (val >= blockMax) {
+        const fill = label === 'CHA' ? '#7f001c' : '#1a1a1a';
+        statBarsSvg += `<rect x="${138 + s * segW}" y="${y + 1}" width="${segW - 1}" height="${barH - 2}" fill="${fill}" />\n`;
+      }
+    }
+    // Value
+    statBarsSvg += `<text x="${138 + barMaxW + 18}" y="${y + 6}" fill="#1a1a1a" font-family="monospace" font-size="6" font-weight="bold" text-anchor="end">${val}</text>\n`;
+  });
+
+  // ── Move pills ──
+  let movesSvg = '';
+  if (data.moves && data.moves.length > 0) {
+    let mx = 114;
+    let my = 141;
+    const pillH = 8;
+
+    data.moves.forEach((move) => {
+      const moveText = `${move.name.toUpperCase()} P${move.power}`;
+      // Estimate text width: ~3.3px per char at 5.5px font
+      const textW = moveText.length * 3.3 + 8;
+
+      if (mx + textW > W - 8) {
+        mx = 114;
+        my += pillH + 2;
+      }
+
+      movesSvg += `<rect x="${mx}" y="${my}" width="${Math.floor(textW)}" height="${pillH}" fill="#f3f4f6" stroke="#d1d5db" stroke-width="0.5" />\n`;
+      movesSvg += `<text x="${mx + 3}" y="${my + pillH / 2 + 1}" fill="#7f001c" font-family="monospace" font-size="5.5" font-weight="bold" dominant-baseline="middle">${escapeXml(move.name.toUpperCase())}</text>\n`;
+      const nameW = move.name.length * 3.3;
+      movesSvg += `<text x="${mx + 3 + nameW + 2}" y="${my + pillH / 2 + 1}" fill="#9ca3af" font-family="monospace" font-size="5.5" dominant-baseline="middle">P${move.power}</text>\n`;
+
+      mx += Math.floor(textW) + 2;
+    });
+  }
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" fill="none">
-  <defs>
-    <linearGradient id="bgG" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#0f172a" />
-      <stop offset="50%" stop-color="#0a0d16" />
-      <stop offset="100%" stop-color="#05080f" />
-    </linearGradient>
-    <radialGradient id="shineG" cx="50%" cy="18%" r="50%">
-      <stop offset="0%" stop-color="rgba(255,255,255,0.04)" />
-      <stop offset="100%" stop-color="rgba(255,255,255,0)" />
-    </radialGradient>
+  <!-- Card Background -->
+  <rect width="${W}" height="${H}" fill="#ffffff" />
 
-  </defs>
+  <!-- Card Border -->
+  <rect x="1" y="1" width="${W - 2}" height="${H - 2}" stroke="#1a1a1a" stroke-width="2" fill="none" />
 
-  <rect width="${W}" height="${H}" rx="10" fill="url(#bgG)" />
-  <rect width="${W}" height="${H}" rx="10" fill="url(#shineG)" />
+  <!-- Header Background -->
+  <rect x="2" y="2" width="${W - 4}" height="26" fill="#fafafa" />
 
-  <rect x="3" y="3" width="${W - 6}" height="${H - 6}" rx="10" stroke="#27272a" stroke-width="2" fill="none" />
-  <rect x="4" y="4" width="${W - 8}" height="3" fill="#7f001c" />
+  <!-- Monster Name -->
+  <text x="10" y="16" fill="#1a1a1a" font-family="monospace" font-size="13" font-weight="bold" dominant-baseline="middle">${escapeXml(displayName.toUpperCase())}</text>
 
-  <text x="16" y="24" fill="#ffffff" font-family="monospace" font-size="18" font-weight="bold">${escapeXml(displayName.toUpperCase())}</text>
+  <!-- Level -->
+  <text x="${W - 10}" y="16" fill="#7f001c" font-family="monospace" font-size="11" font-weight="bold" text-anchor="end" dominant-baseline="middle">LV ${data.level}</text>
 
-  <rect x="${W - 120}" y="8" width="108" height="18" rx="5" fill="#1a1a1a" />
-  <text x="${W - 112}" y="22" fill="#ef4444" font-family="monospace" font-size="11" font-weight="bold">&#9829;</text>
-  <text x="${W - 98}" y="22" fill="#ffffff" font-family="monospace" font-size="11" font-weight="bold">${data.stats.hp}</text>
-  <text x="${W - 76}" y="22" fill="#52525b" font-family="monospace" font-size="11" font-weight="bold">|</text>
-  <text x="${W - 58}" y="22" fill="#e2dfde" font-family="monospace" font-size="11" font-weight="bold">LV${data.level}</text>
+  <!-- Header Separator -->
+  <line x1="4" y1="29" x2="${W - 4}" y2="29" stroke="#1a1a1a" stroke-width="1" />
 
-  <line x1="12" y1="34" x2="${W - 12}" y2="34" stroke="#1e293b" stroke-width="1" />
+  <!-- Sprite Area -->
+  <rect x="8" y="34" width="96" height="96" fill="#ffffff" stroke="#1a1a1a" stroke-width="1" />
 
-  <rect x="140" y="34" width="180" height="108" rx="8" fill="#475569" />
-
-  <g transform="translate(${(W - 96) / 2}, 40)">
+  <!-- Procedural Sprite -->
+  <g transform="translate(8, 34)">
     ${spriteRects}
   </g>
 
-  <rect x="${typeX}" y="142" width="${typeW}" height="14" rx="7" fill="rgba(127,0,28,0.15)" stroke="#7f001c" stroke-width="0.5" />
-  <text x="${W / 2}" y="153" fill="#7f001c" font-family="monospace" font-size="7" font-weight="bold" text-anchor="middle">${escapeXml(trimmedType)}</text>
+  <!-- Palette Badge -->
+  <rect x="80" y="128" width="22" height="8" fill="#ffffff" stroke="#1a1a1a" stroke-width="0.5" />
+  <text x="91" y="132" fill="#1a1a1a" font-family="monospace" font-size="5" font-weight="bold" text-anchor="middle" dominant-baseline="middle">${escapeXml(paletteBadge)} ◈</text>
 
-  <text x="16" y="170" fill="#a1a1aa" font-family="monospace" font-size="7" font-weight="bold">HP</text>
-  <rect x="34" y="164" width="80" height="10" rx="4" fill="#27272a" />
-  <rect x="34" y="164" width="${hpW}" height="10" rx="4" fill="${hpColor}" />
-  <text x="40" y="172" fill="#ffffff" font-family="monospace" font-size="7" font-weight="bold">${data.stats.hp}</text>
+  <!-- Info Panel -->
+  <text x="114" y="40" fill="#6b7280" font-family="monospace" font-size="7" font-weight="bold">TYPE:</text>
+  <text x="144" y="40" fill="#7f001c" font-family="monospace" font-size="7" font-weight="bold">${escapeXml(typeText.toUpperCase())}</text>
 
-  <text x="140" y="170" fill="#71717a" font-family="monospace" font-size="6.5" font-weight="bold">ATK</text>
-  <text x="166" y="170" fill="#e2dfde" font-family="monospace" font-size="8" font-weight="bold">${data.stats.attack}</text>
-  <text x="210" y="170" fill="#71717a" font-family="monospace" font-size="6.5" font-weight="bold">DEF</text>
-  <text x="236" y="170" fill="#e2dfde" font-family="monospace" font-size="8" font-weight="bold">${data.stats.defense}</text>
-  <text x="280" y="170" fill="#71717a" font-family="monospace" font-size="6.5" font-weight="bold">SPD</text>
-  <text x="306" y="170" fill="#e2dfde" font-family="monospace" font-size="8" font-weight="bold">${data.stats.speed}</text>
-  <text x="350" y="170" fill="#71717a" font-family="monospace" font-size="6.5" font-weight="bold">CHA</text>
-  <text x="376" y="170" fill="#e2dfde" font-family="monospace" font-size="8" font-weight="bold">${data.stats.chaos}</text>
+  <text x="114" y="53" fill="#6b7280" font-family="monospace" font-size="7" font-weight="bold">REPOS/FOLLOWER:</text>
+  <text x="192" y="53" fill="#1a1a1a" font-family="monospace" font-size="7" font-weight="bold">${data.publicRepos ?? '?'} / ${data.followers ?? '?'}</text>
 
-  <text x="${W - 16}" y="170" fill="#52525b" font-family="monospace" font-size="7" font-weight="bold" text-anchor="end">W:${data.wins ?? 0} L:${data.losses ?? 0}</text>
+  <text x="114" y="66" fill="#6b7280" font-family="monospace" font-size="7" font-weight="bold">BORN IN:</text>
+  <text x="158" y="66" fill="#1a1a1a" font-family="monospace" font-size="7" font-weight="bold">${data.joinedYear ?? '?'} @ ${escapeXml(loc)}</text>
 
-  <rect x="16" y="180" width="${W - 32}" height="24" rx="4" fill="#1e1e24" stroke="#334155" stroke-width="0.5" />
+  <!-- Stat Bars -->
+  ${statBarsSvg}
+
+  <!-- Move Pills -->
+  ${movesSvg}
+
+  <!-- Dashed Separator -->
+  <line x1="8" y1="167" x2="${W - 8}" y2="167" stroke="#d1d5db" stroke-width="0.5" stroke-dasharray="3,3" />
+
+  <!-- Roast -->
   ${roastSvg}
 
-  <text x="16" y="214" fill="#52525b" font-family="monospace" font-size="6.5" font-weight="bold">@${escapeXml(data.username.toUpperCase())}</text>
-  <text x="${W - 16}" y="214" fill="#7f001c" font-family="monospace" font-size="7" font-weight="bold" text-anchor="end">&#9889; GITTYMON</text>
+  <!-- Footer Separator -->
+  <line x1="4" y1="192" x2="${W - 4}" y2="192" stroke="#1a1a1a" stroke-width="1" />
+
+  <!-- Footer Background -->
+  <rect x="2" y="193" width="${W - 4}" height="${H - 195}" fill="#f5f5f5" />
+
+  <!-- W/L Record -->
+  <text x="8" y="205" fill="#6b7280" font-family="monospace" font-size="7" font-weight="bold" dominant-baseline="middle">W:${data.wins ?? 0} L:${data.losses ?? 0}</text>
+
+  <!-- Username -->
+  <text x="${W - 8}" y="205" fill="#7f001c" font-family="monospace" font-size="7" font-weight="bold" text-anchor="end" dominant-baseline="middle">@${escapeXml(data.username.toUpperCase())}</text>
 </svg>`;
 }
 
 function escapeXml(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+
+// Download an SVG file from CardData
+export function downloadCardAsSvg(data: CardData, filename?: string) {
+  const svg = generateCardSvg(data);
+  const blob = new Blob([svg], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename || `${data.username}-gittymon-card.svg`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // Download from a URL (fetches as blob for reliable cross-browser download)

@@ -148,13 +148,14 @@ describe('SVG Card Generation (generateCardSvg)', () => {
 
   it('should include level and type badge', () => {
     const svg = generateCardSvg(SAMPLE_CARD);
-    expect(svg).toContain('LV42');
+    expect(svg).toContain('LV 42');
     expect(svg).toContain(SAMPLE_CARD.type.toUpperCase());
   });
 
   it('should include roast text', () => {
     const svg = generateCardSvg(SAMPLE_CARD);
-    expect(svg).toContain(SAMPLE_CARD.roast.toUpperCase().substring(0, 20));
+    // Roast is quoted and mixed-case in the new MonDetailsView layout
+    expect(svg).toContain(SAMPLE_CARD.roast.substring(5, 25));
   });
 
   it('should include win/loss record', () => {
@@ -201,8 +202,8 @@ describe('Card Renderer Edge Cases', () => {
 
     it('should truncate very long monster names', () => {
       const svg = generateCardSvg(longCard);
-      // Should only show max 16 chars
-      expect(svg).toContain('A'.repeat(16));
+      // Should only show max 18 chars (MonDetailsView layout)
+      expect(svg).toContain('A'.repeat(18));
     });
 
     it('should handle empty string values', () => {

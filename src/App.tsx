@@ -63,6 +63,7 @@ export default function App() {
   const lastDirHandlerRef = useRef<((dir: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT') => void) | null>(null);
   const lastAHandlerRef = useRef<(() => void) | null>(null);
   const lastBHandlerRef = useRef<(() => void) | null>(null);
+  const lastSelectHandlerRef = useRef<(() => void) | null>(null);
 
   // WebSocket Core state for real-time multiplayer
   const wsRef = useRef<WebSocket | null>(null);
@@ -388,7 +389,9 @@ export default function App() {
   };
 
   const handlePhysicalSelect = () => {
-    if (screen === 'DETAILS') {
+    if (lastSelectHandlerRef.current) {
+      lastSelectHandlerRef.current();
+    } else if (screen === 'DETAILS') {
       const selectElement = document.querySelector('[onClick="toggleViewMode()"]') as HTMLElement;
       if (selectElement) {
         selectElement.click();
@@ -454,6 +457,7 @@ export default function App() {
   }, []);
   const registerA = useCallback((h: (() => void) | null) => { lastAHandlerRef.current = h; }, []);
   const registerB = useCallback((h: (() => void) | null) => { lastBHandlerRef.current = h; }, []);
+  const registerSelect = useCallback((h: (() => void) | null) => { lastSelectHandlerRef.current = h; }, []);
 
   // Memoized screen navigation callbacks
   const goToHub = useCallback(() => setScreen('HUB'), []);
@@ -593,6 +597,7 @@ export default function App() {
               registerDirectionHandler={registerDir}
               registerAHandler={registerA}
               registerBHandler={registerB}
+              registerSelectHandler={registerSelect}
               autoCopy={autoCopyBadge}
             />
           </ScreenView>
