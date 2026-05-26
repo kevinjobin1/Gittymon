@@ -26,8 +26,8 @@ export const SHELL_HTML = `<!doctype html>
     <!-- TWITTER_IMAGE_INJECTED_BY_SERVER -->
 
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <script type="module" crossorigin src="/assets/index-Bx-D08Hu.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-C6LLmqhk.css">
+    <script type="module" crossorigin src="/assets/index-BFYPF0MI.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DYg-IMTX.css">
   </head>
   <body>
     <div id="root"></div>

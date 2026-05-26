@@ -38,6 +38,38 @@ const badgeLimiter = rateLimit({
   message: { error: 'Too many badge requests. Please wait before trying again.' },
 });
 
+const leaderboardLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many leaderboard requests. Please wait before trying again.' },
+});
+
+const cardLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many card page requests. Please wait before trying again.' },
+});
+
+const embedLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many embed requests. Please wait before trying again.' },
+});
+
+const bossCommentLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many boss comment requests. Please wait before trying again.' },
+});
+
 app.use(express.json());
 
 // Initialize Groq client (OpenAI-compatible) for Llama 3 inference
@@ -234,7 +266,7 @@ function getProviderParam(req: express.Request): string | undefined {
  * Dynamic SVG Card Embed Generator API Endpoint
  * Formats a fully vector-drawn Gameboy-style visual of their Roastmon profile
  */
-app.get('/api/embed/svg/:username', (req, res) => {
+app.get('/api/embed/svg/:username', embedLimiter, (req, res) => {
   const { username } = req.params;
   if (!username) {
     return res.status(400).send('Username parameter required');
@@ -248,7 +280,7 @@ app.get('/api/embed/svg/:username', (req, res) => {
 });
 
 // Also support alternate .svg extension directly for convenient readme formatting
-app.get('/api/embed/:username.svg', (req, res) => {
+app.get('/api/embed/:username.svg', embedLimiter, (req, res) => {
   const { username } = req.params;
   if (!username) {
     return res.status(400).send('Username parameter required');
@@ -265,7 +297,7 @@ app.get('/api/embed/:username.svg', (req, res) => {
  * Dynamic GIF Card Embed Generator API Endpoint
  * Formats a fully animated looping Gameboy visual of their Roastmon profile
  */
-app.get('/api/embed/gif/:username', (req, res) => {
+app.get('/api/embed/gif/:username', embedLimiter, (req, res) => {
   const { username } = req.params;
   if (!username) {
     return res.status(400).send('Username parameter required');
@@ -284,7 +316,7 @@ app.get('/api/embed/gif/:username', (req, res) => {
 });
 
 // Also support alternate .gif extension directly for convenient readme formatting
-app.get('/api/embed/:username.gif', (req, res) => {
+app.get('/api/embed/:username.gif', embedLimiter, (req, res) => {
   const { username } = req.params;
   if (!username) {
     return res.status(400).send('Username parameter required');
@@ -358,7 +390,7 @@ app.get('/api/badge/:username', badgeLimiter, (req, res) => {
  * Social share / standalone card page route.
  * Renders a full HTML page with Open Graph tags for sharing on Twitter, Discord, etc.
  */
-app.get('/card/:username', (req, res) => {
+app.get('/card/:username', cardLimiter, (req, res) => {
   const { username } = req.params;
   if (!username) return res.status(400).send('Username parameter required');
 
@@ -581,14 +613,14 @@ app.get('/card/:username', (req, res) => {
 /**
  * Endpoint to load the global high scores leaderboard
  */
-app.get('/api/leaderboard', (req, res) => {
+app.get('/api/leaderboard', leaderboardLimiter, (req, res) => {
   res.json(loadLeaderboard());
 });
 
 /**
  * Endpoint to generate dynamic AI comments during Gym Leader / Glitch Boss PVP combat
  */
-app.post('/api/ai-boss-comment', async (req, res) => {
+app.post('/api/ai-boss-comment', bossCommentLimiter, async (req, res) => {
   const { username, monName, stats, action, bossHP } = req.body;
 
   if (!username) {

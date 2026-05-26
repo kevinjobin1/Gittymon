@@ -555,6 +555,26 @@ describe('Express server /api/summon (with Groq key)', () => {
         expect(res.body.comment).toContain('StackOverflowException');
       });
     });
+
+    // =============================================================
+    //  Rate limiting
+    // =============================================================
+
+    describe('rate limiting', () => {
+      it('returns 429 when boss comment rate limit is exceeded', async () => {
+        mockRateLimitMiddleware.mockImplementation(
+          (_req: unknown, res: any, _next: unknown) => {
+            res.status(429).json({ error: 'Too many boss comment requests. Please wait before trying again.' });
+          },
+        );
+
+        const res = await request(app)
+          .post('/api/ai-boss-comment')
+          .send({ username: 'testuser' });
+        expect(res.status).toBe(429);
+        expect(res.body.error).toContain('Too many boss comment');
+      });
+    });
   });
 });
 
@@ -826,28 +846,28 @@ describe('Express server /api/summon (without Groq key)', () => {
     });
 
     it('includes the HP stat in the fallback comment when provided', async () => {
-      // Only 1 of 5 comments references HP — run 20 to get 99%+ confidence
+      // Only 1 of 5 comments references HP — run 40 for high confidence
       const results = await Promise.all(
-        Array.from({ length: 20 }, () =>
+        Array.from({ length: 40 }, () =>
           request(app)
             .post('/api/ai-boss-comment')
             .send({ username: 'testuser', stats: { hp: 99 } }),
         ),
       );
       const ok = results.filter(r => r.status === 200);
-      expect(ok.length).toBe(20);
+      expect(ok.length).toBe(40);
       const hasHpRef = ok.some(r => r.body.comment?.includes('99 HP'));
       expect(hasHpRef).toBe(true);
     });
 
     it('uses default HP 50 when stats are not provided', async () => {
       const results = await Promise.all(
-        Array.from({ length: 20 }, () =>
+        Array.from({ length: 40 }, () =>
           request(app).post('/api/ai-boss-comment').send({ username: 'testuser' }),
         ),
       );
       const ok = results.filter(r => r.status === 200);
-      expect(ok.length).toBe(20);
+      expect(ok.length).toBe(40);
       const hasDefaultHp = ok.some(r => r.body.comment?.includes('50 HP'));
       expect(hasDefaultHp).toBe(true);
     });
@@ -871,6 +891,26 @@ describe('Express server /api/summon (without Groq key)', () => {
       expect(res.status).toBe(200);
       // Fallback comments are returned raw, not wrapped in ""
       expect(res.body.comment).not.toMatch(/^".*"$/);
+    });
+
+    // =============================================================
+    //  Rate limiting
+    // =============================================================
+
+    describe('rate limiting', () => {
+      it('returns 429 when boss comment rate limit is exceeded (no Groq)', async () => {
+        mockRateLimitMiddleware.mockImplementation(
+          (_req: unknown, res: any, _next: unknown) => {
+            res.status(429).json({ error: 'Too many boss comment requests. Please wait before trying again.' });
+          },
+        );
+
+        const res = await request(app)
+          .post('/api/ai-boss-comment')
+          .send({ username: 'testuser' });
+        expect(res.status).toBe(429);
+        expect(res.body.error).toContain('Too many boss comment');
+      });
     });
   });
 });
@@ -1391,19 +1431,16 @@ describe('Express server /api/leaderboard', () => {
   // =================================================================
 
   describe('rate limiting', () => {
-    it('is NOT rate-limited (bypasses without 429)', async () => {
-      // Force rate limiter to 429 — this endpoint has no rate limiter,
-      // so it should still return 200 even when the rate limit middleware
-      // is configured to block.
+    it('returns 429 when leaderboard rate limit is exceeded', async () => {
       mockRateLimitMiddleware.mockImplementation(
         (_req: unknown, res: any, _next: unknown) => {
-          res.status(429).json({ error: 'Too many requests.' });
+          res.status(429).json({ error: 'Too many leaderboard requests. Please wait before trying again.' });
         },
       );
 
       const res = await request(app).get('/api/leaderboard');
-      expect(res.status).toBe(200);
-      expect(res.body).toEqual([]);
+      expect(res.status).toBe(429);
+      expect(res.body.error).toContain('Too many leaderboard');
     });
   });
 });
@@ -1646,6 +1683,24 @@ describe('Express server /card/:username', () => {
   });
 
   // =================================================================
+  //  Rate limiting
+  // =================================================================
+
+  describe('rate limiting', () => {
+    it('returns 429 when card page rate limit is exceeded', async () => {
+      mockRateLimitMiddleware.mockImplementation(
+        (_req: unknown, res: any, _next: unknown) => {
+          res.status(429).json({ error: 'Too many card page requests. Please wait before trying again.' });
+        },
+      );
+
+      const res = await request(app).get('/card/testuser');
+      expect(res.status).toBe(429);
+      expect(res.body.error).toContain('card page');
+    });
+  });
+
+  // =================================================================
   //  Different username produces different deterministic values
   // =================================================================
 
@@ -1704,6 +1759,10 @@ describe('Express server /api/embed endpoints', () => {
     mockLoadLeaderboard.mockReturnValue([]);
     mockGenerateSvgCard.mockReturnValue('<svg>mock-svg-card</svg>');
     mockGenerateGifCard.mockReturnValue(Buffer.from('mock-gif-binary'));
+    // Restore default pass-through rate limit middleware
+    mockRateLimitMiddleware.mockImplementation(
+      (_req: unknown, _res: unknown, next: () => void) => next(),
+    );
   });
 
   // =================================================================
@@ -1733,8 +1792,8 @@ describe('Express server /api/embed endpoints', () => {
       const res = await request(app).get('/api/embed/svg/testuser');
       expect(res.status).toBe(200);
       expect(res.headers['content-type']).toMatch(/image\/svg\+xml/);
-      expect(res.text).toContain('<svg');
-      expect(res.text).toContain('TestMon');
+      // SVG content is returned as the raw response body (not parsed as text by supertest for image types)
+      expect(Buffer.from(res.body).toString()).toContain('TestMon');
     });
 
     it('passes username and palette to generateSvgCard', async () => {
@@ -1859,6 +1918,64 @@ describe('Express server /api/embed endpoints', () => {
       const res = await request(app).get('/api/embed/testuser.gif');
       expect(res.status).toBe(200);
       expect(res.headers['content-type']).toMatch(/image\/gif/);
+    });
+  });
+
+  // =================================================================
+  //  Default provider via detectProvider
+  // =================================================================
+
+  // =================================================================
+  //  Rate limiting
+  // =================================================================
+
+  describe('rate limiting', () => {
+    it('returns 429 when embed rate limit is exceeded', async () => {
+      mockRateLimitMiddleware.mockImplementation(
+        (_req: unknown, res: any, _next: unknown) => {
+          res.status(429).json({ error: 'Too many embed requests. Please wait before trying again.' });
+        },
+      );
+
+      const res = await request(app).get('/api/embed/svg/testuser');
+      expect(res.status).toBe(429);
+      expect(res.body.error).toContain('Too many embed');
+    });
+
+    it('returns 429 on alias routes when embed rate limit is exceeded', async () => {
+      mockRateLimitMiddleware.mockImplementation(
+        (_req: unknown, res: any, _next: unknown) => {
+          res.status(429).json({ error: 'Too many embed requests. Please wait before trying again.' });
+        },
+      );
+
+      const res = await request(app).get('/api/embed/testuser.svg');
+      expect(res.status).toBe(429);
+      expect(res.body.error).toContain('Too many embed');
+    });
+
+    it('returns 429 on GIF route when embed rate limit is exceeded', async () => {
+      mockRateLimitMiddleware.mockImplementation(
+        (_req: unknown, res: any, _next: unknown) => {
+          res.status(429).json({ error: 'Too many embed requests. Please wait before trying again.' });
+        },
+      );
+
+      const res = await request(app).get('/api/embed/gif/testuser');
+      expect(res.status).toBe(429);
+      expect(res.body.error).toContain('Too many embed');
+    });
+
+    it('returns 429 on .gif alias route when embed rate limit is exceeded', async () => {
+      mockRateLimitMiddleware.mockImplementation(
+        (_req: unknown, res: any, _next: unknown) => {
+          res.status(429).json({ error: 'Too many embed requests. Please wait before trying again.' });
+        },
+      );
+
+      const res = await request(app).get('/api/embed/testuser.gif');
+      expect(res.status).toBe(429);
+      expect(res.body.error).toContain('Too many embed');
     });
   });
 
