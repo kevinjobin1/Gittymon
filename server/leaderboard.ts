@@ -34,6 +34,8 @@ export function recordMatchResult(
 ): LeaderboardEntry[] {
   const leaderboard = loadLeaderboard();
 
+  const now = new Date().toISOString();
+
   // Helper to find or create entry
   const getOrCreateEntry = (username: string, monName: string, level: number, avatarUrl: string) => {
     let entry = leaderboard.find(e => e.username.toLowerCase() === username.toLowerCase());
@@ -45,6 +47,7 @@ export function recordMatchResult(
         wins: 0,
         losses: 0,
         avatarUrl: avatarUrl || `https://github.com/${username}.png`,
+        lastBattledAt: now,
       };
       leaderboard.push(entry);
     } else {
@@ -52,6 +55,7 @@ export function recordMatchResult(
       entry.monName = monName;
       entry.level = Math.max(entry.level, level);
       if (avatarUrl) entry.avatarUrl = avatarUrl;
+      entry.lastBattledAt = now;
     }
     return entry;
   };

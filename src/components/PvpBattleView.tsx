@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { RoastMon } from '../types';
 import { drawProceduralMon } from '../utils/procGen';
 import { playRetroSound } from '../utils/audio';
+import { RetroButton } from '../utils/ripple';
 
 interface PvpBattleViewProps {
   playerMon: RoastMon;
@@ -259,12 +260,14 @@ export function PvpBattleView({
             <div className="text-gray-500 text-center text-[7px] max-h-[20px] overflow-hidden truncate">
               {winnerNickname.toUpperCase()} WINS THE GLORY IN PVP!
             </div>
-            <button
-              onClick={onExit}
+            <RetroButton
+              variant="bare"
+              press="light"
+              onClick={(e) => { onExit(); }}
               className="w-full bg-[#1a1a1a] text-white py-0.5 mt-1 hover:bg-neutral-800 text-center text-[7.5px] font-bold"
             >
               PRESS A/B TO RETURN LOBBY
-            </button>
+            </RetroButton>
           </div>
         ) : lastActionSent ? (
           <div className="flex-1 flex flex-col items-center justify-center space-y-1 bg-neutral-50 border border-neutral-200 p-1">
@@ -302,21 +305,17 @@ export function PvpBattleView({
               ].map((opt) => {
                 const isSelected = mainCursor === opt.id;
                 return (
-                  <button
+                  <RetroButton
                     key={opt.id}
-                    onClick={() => {
-                      setMainCursor(opt.id);
-                      if (opt.id === 0) setActiveMenu('FIGHT');
-                      else if (opt.id === 1) onSendAction('HEAL');
-                      else if (opt.id === 2) onSendAction('SPIT_ROAST');
-                      else if (opt.id === 3) onForfeit();
-                    }}
+                    variant="bare"
+                    press="light"
+                    onClick={(e) => { setMainCursor(opt.id); if (opt.id === 0) setActiveMenu('FIGHT'); else if (opt.id === 1) onSendAction('HEAL'); else if (opt.id === 2) onSendAction('SPIT_ROAST'); else if (opt.id === 3) onForfeit(); }}
                     className={`text-left block text-[7px] leading-none ${
                       isSelected ? 'text-[#7f001c]' : 'text-neutral-500'
                     }`}
                   >
                     {isSelected ? '▶' : ' '} {opt.str}
-                  </button>
+                  </RetroButton>
                 );
               })}
             </div>
@@ -326,9 +325,9 @@ export function PvpBattleView({
             {/* Back to main */}
             <div className="flex justify-between items-center text-[7.5px] bg-neutral-100 border-b border-neutral-300 px-1 font-bold">
               <span>SELECT MOVE:</span>
-              <button onClick={() => setActiveMenu('MAIN')} className="text-[#7f001c] hover:underline uppercase text-[6.5px]">
+              <RetroButton variant="bare" press="light" onClick={(e) => { setActiveMenu('MAIN'); }} className="text-[#7f001c] hover:underline uppercase text-[6.5px]">
                 ◀ CANCEL B
-              </button>
+              </RetroButton>
             </div>
 
             {/* 4 Moves selector Grid */}
@@ -336,20 +335,18 @@ export function PvpBattleView({
               {playerMon.moves.map((move, idx) => {
                 const isSelected = fightCursor === idx;
                 return (
-                  <button
+                  <RetroButton
                     key={move.name}
-                    onClick={() => {
-                      setFightCursor(idx);
-                      onSendAction('MOVE', idx);
-                      setActiveMenu('MAIN');
-                    }}
+                    variant="bare"
+                    press="light"
+                    onClick={(e) => { setFightCursor(idx); onSendAction('MOVE', idx); setActiveMenu('MAIN'); }}
                     className={`flex items-center text-[7px] leading-tight text-left rounded p-0.5 truncate transition-all ${
                       isSelected ? 'bg-neutral-800 text-white font-bold' : 'hover:bg-neutral-200'
                     }`}
                   >
                     <span className="mr-0.5 shrink-0">{isSelected ? '▶' : '  '}</span>
                     <span className="truncate">{move.name.toUpperCase()}</span>
-                  </button>
+                  </RetroButton>
                 );
               })}
             </div>

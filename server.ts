@@ -352,6 +352,9 @@ app.get('/card/:username', (req, res) => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${h(ogTitle)}</title>
+  <meta name="description" content="${h(roast)}">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="${cardUrl}">
 
   <!-- Open Graph -->
   <meta property="og:title" content="${h(ogTitle)}">
@@ -360,6 +363,7 @@ app.get('/card/:username', (req, res) => {
   <meta property="og:image:width" content="1280">
   <meta property="og:image:height" content="640">
   <meta property="og:image:type" content="image/png">
+  <meta property="og:image:alt" content="@${cleanUsername}'s Gittymon Monster Card">
   <meta property="og:url" content="${cardUrl}">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Gittymon">
@@ -369,6 +373,28 @@ app.get('/card/:username', (req, res) => {
   <meta name="twitter:title" content="${h(ogTitle)}">
   <meta name="twitter:description" content="${h(roast)}">
   <meta name="twitter:image" content="${socialPreviewUrl}">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "${h(ogTitle)}",
+    "description": "${h(roast)}",
+    "url": "${cardUrl}",
+    "about": {
+      "@type": "Thing",
+      "name": "${h(monName.toUpperCase())}"
+    },
+    "mainEntity": {
+      "@type": "Question",
+      "name": "What is @${cleanUsername}'s Gittymon?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "${h(monName.toUpperCase())} is a LV ${level} ${h(type.toUpperCase())}-type Gittymon summoned from @${cleanUsername}'s GitHub profile. Record: ${wins} wins, ${losses} losses."
+      }
+    }
+  }
+  </script>
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -500,7 +526,7 @@ app.get('/card/:username', (req, res) => {
   <div class="container">
     <div class="logo">⚡ Gittymon Network ⚡</div>
     <div class="card-frame">
-      <img src="${gifUrl}" width="460" height="220" alt="@${cleanUsername}'s Gittymon Card">
+      <img src="${gifUrl}" width="460" height="220" alt="@${cleanUsername}'s Gittymon Monster Card — ${h(monName.toUpperCase())} LV ${level}">
     </div>
     <div class="info">
       <div class="username">@<span>${cleanUsername}</span></div>
@@ -521,7 +547,7 @@ app.get('/card/:username', (req, res) => {
 </html>`;
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Cache-Control', 'max-age=3600, s-maxage=3600, stale-while-revalidate=86400');
   res.send(html);
 });
 
@@ -684,12 +710,93 @@ function generateMockRoastMon(githubData: any, username: string) {
   };
 }
 
+// Static SEO content
+const ROBOTS_TXT = `User-agent: *
+Allow: /
+
+# Disallow internal API endpoints
+Disallow: /api/
+
+# Sitemap
+Sitemap: https://gittymon.dev/sitemap.xml
+`;
+
+const SITEMAP_TTL_MS = 3600_000; // 1 hour — rebuild sitemap periodically to reflect leaderboard changes
+
+// Cached sitemap with expiry — regenerated when the cached copy is older than SITEMAP_TTL_MS
+let cachedSitemap: string | null = null;
+let lastSitemapFetch: number = 0;
+
+function getSitemap(origin: string): string {
+  const now = Date.now();
+  if (cachedSitemap != null && (now - lastSitemapFetch) < SITEMAP_TTL_MS) {
+    return cachedSitemap;
+  }
+  try {
+    cachedSitemap = buildSitemap(origin);
+    lastSitemapFetch = now;
+  } catch (err) {
+    console.error('Sitemap build failed:', err);
+    if (cachedSitemap == null) {
+      cachedSitemap = buildSitemapFallback(origin);
+      lastSitemapFetch = now;
+    }
+  }
+  return cachedSitemap;
+}
+
+function buildSitemap(origin: string): string {
+  const today = new Date().toISOString().slice(0, 10);
+  let urls = `<url>
+    <loc>${origin}/</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>`;
+
+  const leaderboard = loadLeaderboard();
+  for (const entry of leaderboard) {
+    const safeUsername = entry.username.replace(/[&<>"']/g, '');
+    // Use lastBattledAt when available for accurate lastmod, fall back to today
+    const lastmod = entry.lastBattledAt ? entry.lastBattledAt.slice(0, 10) : today;
+    urls += `
+  <url>
+    <loc>${origin}/card/${escapeXml(safeUsername)}</loc>
+    <lastmod>${lastmod}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`;
+  }
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}
+</urlset>`;
+}
+
+function buildSitemapFallback(origin: string): string {
+  const today = new Date().toISOString().slice(0, 10);
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${origin}/</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>`;
+}
+
+function escapeXml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+
 // Vite static assets mount structure
 async function startServer() {
-  // Helper: inject dynamic absolute URLs into static meta tags
-  function injectAbsoluteMeta(html: string, req: express.Request): string {
+  // Helper: inject dynamic absolute URLs and SEO metadata into static meta tags
+  function injectSeoMeta(html: string, req: express.Request): string {
     const origin = `${req.protocol}://${req.get('host')}`;
     return html
+      .replace('<!-- CANONICAL_INJECTED_BY_SERVER -->', `<link rel="canonical" href="${origin}/">`)
       .replace(
         '<!-- OG_URL_INJECTED_BY_SERVER -->',
         `<meta property="og:url" content="${origin}/">`
@@ -713,6 +820,36 @@ async function startServer() {
     });
   }
 
+  // POST /api/revalidate-sitemap — invalidate cached sitemap so it rebuilds on next request
+  app.post('/api/revalidate-sitemap', (req, res) => {
+    const expectedKey = process.env.REVALIDATE_KEY;
+    if (expectedKey) {
+      const providedKey = req.headers['x-revalidate-key'] as string | undefined;
+      if (providedKey !== expectedKey) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+    }
+    lastSitemapFetch = 0;
+    cachedSitemap = null;
+    res.setHeader('Content-Type', 'application/json');
+    res.json({ ok: true, message: 'Sitemap cache invalidated' });
+  });
+
+  // Static SEO files
+  app.get('/robots.txt', (req, res) => {
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Cache-Control', 'max-age=86400');
+    res.send(ROBOTS_TXT);
+  });
+
+  app.get('/sitemap.xml', (req, res) => {
+    const origin = `${req.protocol}://${req.get('host')}`;
+    const sitemap = getSitemap(origin);
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Cache-Control', 'max-age=3600, s-maxage=3600, stale-while-revalidate=86400');
+    res.send(sitemap);
+  });
+
   // Inject dynamic absolute og:url for the root page
   // NOTE: registered BEFORE Vite middleware so OUR handler runs first for '/'
   // We call viteDevServer.transformIndexHtml() ourselves to inject the React refresh preamble
@@ -722,12 +859,37 @@ async function startServer() {
       : path.join(process.cwd(), 'dist', 'index.html');
     let html = fs.readFileSync(htmlPath, 'utf-8');
 
+    let appHtml = '';
+
+    if (viteDevServer) {
+      // --- SSR in dev mode via Vite ---
+      try {
+        const { render } = await viteDevServer.ssrLoadModule('/src/entry-server.tsx');
+        appHtml = await render();
+      } catch (ssrErr) {
+        console.warn('SSR render failed in dev mode, falling back to client-only:', ssrErr);
+      }
+    } else {
+      // --- SSR in production mode (pre-built module) ---
+      try {
+        const { render } = await import('./dist/server/entry-server.js');
+        appHtml = await render();
+      } catch (ssrErr) {
+        console.warn('SSR render failed in production, falling back to client-only:', ssrErr);
+      }
+    }
+
+    // Inject SSR content into the root div
+    if (appHtml) {
+      html = html.replace('<div id="root"></div>', `<div id="root">${appHtml}</div>`);
+    }
+
     // In dev, run through Vite's HTML transform pipeline to inject React refresh preamble etc.
     if (viteDevServer) {
       html = await viteDevServer.transformIndexHtml(req.url, html);
     }
 
-    html = injectAbsoluteMeta(html, req);
+    html = injectSeoMeta(html, req);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache');
     res.send(html);
@@ -741,10 +903,20 @@ async function startServer() {
   if (process.env.NODE_ENV === 'production') {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
+    app.get('*', async (req, res) => {
       const htmlPath = path.join(distPath, 'index.html');
       let html = fs.readFileSync(htmlPath, 'utf-8');
-      html = injectAbsoluteMeta(html, req);
+
+      // SSR in production mode (pre-built module)
+      try {
+        const { render } = await import('./dist/server/entry-server.js');
+        const appHtml = await render();
+        html = html.replace('<div id="root"></div>', `<div id="root">${appHtml}</div>`);
+      } catch (ssrErr) {
+        console.warn('SSR render failed in production, falling back to client-only:', ssrErr);
+      }
+
+      html = injectSeoMeta(html, req);
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('Cache-Control', 'no-cache');
       res.send(html);

@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
-import { RoastMon, ScreenID } from './types';
+import { RoastMon, ScreenID, type GittymonCard } from './types';
 import { ConsoleShell } from './components/ConsoleShell';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { useIdentity } from './lib/useIdentity';
+import { determineRarity } from './lib/rarity';
+import { selectMutations } from './lib/mutations';
+import { getFormVariant } from './lib/reroll';
 import { playRetroSound, setBgmIntensity } from './utils/audio';
 
 // Lazy-loaded screen components — split on async boundaries
@@ -16,12 +20,16 @@ const PvpLobbyView = lazy(() => import('./components/PvpLobbyView').then(m => ({
 const PvpBattleView = lazy(() => import('./components/PvpBattleView').then(m => ({ default: m.PvpBattleView })));
 const AiBossBattleView = lazy(() => import('./components/AiBossBattleView').then(m => ({ default: m.AiBossBattleView })));
 const ExportEmbedView = lazy(() => import('./components/ExportEmbedView').then(m => ({ default: m.ExportEmbedView })));
+const CollectionView = lazy(() => import('./components/CollectionView').then(m => ({ default: m.CollectionView })));
+const CompareView = lazy(() => import('./components/CompareView').then(m => ({ default: m.CompareView })));
 
 export default function App() {
   const [screen, setScreen] = useState<ScreenID>('SPLASH');
   const [selectedUsername, setSelectedUsername] = useState('');
   const [activeMon, setActiveMon] = useState<RoastMon | null>(null);
   const [historyList, setHistoryList] = useState<RoastMon[]>([]);
+  const [compareCard1Id, setCompareCard1Id] = useState('');
+  const [compareCard2Id, setCompareCard2Id] = useState('');
 
   // Refs for tracking async summoning
   const fetchedMonRef = useRef<RoastMon | null>(null);
@@ -343,6 +351,24 @@ export default function App() {
     }
   };
 
+  // Construct a GittymonCard from a RoastMon
+  const buildGittymonCard = useCallback((mon: RoastMon, rerollCount: number): GittymonCard => {
+    const rarity = determineRarity(mon.username, rerollCount);
+    const form = getFormVariant(rerollCount, mon.username);
+    const mutations = selectMutations(rarity, `${mon.username}-${rerollCount}-${Date.now()}`);
+    return {
+      id: crypto.randomUUID(),
+      base: mon,
+      rarity,
+      form,
+      mutations,
+      rerollCount,
+      evolutionTier: 0,
+      isFavorite: false,
+      createdAt: Date.now(),
+    };
+  }, []);
+
   // Handles transition on loader finish
   const handleSummonFinished = () => {
     const checkReady = setInterval(() => {
@@ -351,6 +377,18 @@ export default function App() {
         const finalMon = fetchedMonRef.current;
         setActiveMon(finalMon);
         saveToHistory(finalMon);
+
+        // Save the generated card to the identity collection
+        if (identity) {
+          const card = buildGittymonCard(finalMon, 0);
+          addCard(card);
+        } else {
+          // First-time visitor — create identity automatically with this card
+          createIdentity(selectedUsername);
+          const card = buildGittymonCard(finalMon, 0);
+          addCard(card);
+        }
+
         // Summon complete -> Go directly to Export/Embed view with auto-copy badge
         setAutoCopyBadge(true);
         setScreen('EXPORT_EMBED');
@@ -420,6 +458,9 @@ export default function App() {
         setAutoCopyBadge(false);
         setScreen('EXPORT_EMBED');
         break;
+      case 'COLLECTION':
+        setScreen('COLLECTION');
+        break;
       case 'HISTORY':
         setScreen('HISTORY');
         break;
@@ -475,6 +516,15 @@ export default function App() {
     setScreen('HUB');
   }, []);
 
+  // Memoized compare callback for CollectionView
+  const handleCompare = useCallback((card1Id: string, card2Id: string) => {
+    setCompareCard1Id(card1Id);
+    setCompareCard2Id(card2Id);
+    setScreen('COMPARE');
+  }, []);
+
+  const { identity, addCard, createIdentity } = useIdentity();
+
   return (
     <ConsoleShell
       isSynced={!!activeMon}
@@ -486,7 +536,11 @@ export default function App() {
       <Suspense fallback={<div className="w-full h-full bg-[#f5f5f5] animate-pulse" />}>
         <ErrorBoundary>
           <ScreenView id="SPLASH">
-            <SplashView onSummon={handleSummonInitiate} />
+            <SplashView
+              onSummon={handleSummonInitiate}
+              identity={identity}
+              onGoToCollection={() => setScreen('COLLECTION')}
+            />
           </ScreenView>
 
           <ScreenView id="SUMMONING">
@@ -594,6 +648,27 @@ export default function App() {
               registerAHandler={registerA}
               registerBHandler={registerB}
               autoCopy={autoCopyBadge}
+            />
+          </ScreenView>
+
+          <ScreenView id="COLLECTION">
+            <CollectionView
+              onBack={goToHub}
+              registerBHandler={registerB}
+              registerAHandler={registerA}
+              registerDirectionHandler={registerDir}
+              onNavigateToUsername={(username) => handleSummonInitiate(username)}
+              onCompare={handleCompare}
+            />
+          </ScreenView>
+
+          <ScreenView id="COMPARE">
+            <CompareView
+              card1Id={compareCard1Id}
+              card2Id={compareCard2Id}
+              onBack={() => setScreen('COLLECTION')}
+              registerBHandler={registerB}
+              registerAHandler={registerA}
             />
           </ScreenView>
         </ErrorBoundary>

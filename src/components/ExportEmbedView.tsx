@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { RoastMon } from '../types';
+import { RoastMon, type Rarity } from '../types';
 import { playRetroSound } from '../utils/audio';
 import { drawCardFrame, downloadCardAsPng, downloadFromUrl, generateCardSvg } from '../utils/cardRenderer';
 import type { CardData } from '../utils/cardRenderer';
+import { downloadShareCardPng } from '../utils/shareCardRenderer';
+import type { ShareCardData } from '../utils/shareCardRenderer';
 
 interface ExportEmbedViewProps {
   mon: RoastMon;
@@ -79,7 +81,30 @@ export function ExportEmbedView({
     setTimeout(() => setToast(null), 2500);
   };
 
+  const shareCardData: ShareCardData = {
+    name: mon.name,
+    username: mon.username,
+    type: mon.type,
+    level: mon.level,
+    rarity: 'common' as Rarity,
+    form: 'Base Form',
+    stats: mon.stats,
+    spriteSeed: mon.spriteSeed,
+    roast: mon.roast,
+    mutations: [],
+  };
+
   const EXPORTS = [
+    {
+      label: '⭐ SHARE CARD (1:1 SQUARE)',
+      action: () => {
+        playRetroSound('summon');
+        downloadShareCardPng(shareCardData);
+        showToast('Square share card saved! Perfect for social media.', 'download');
+      },
+      desc: 'Premium square card with glowing rarity border, animated sprite, stats & watermark. Optimized for X/Twitter, Discord & TikTok screenshots.',
+      hint: 'Press A to download instantly',
+    },
     {
       label: 'DOWNLOAD PNG (FREE / INSTANT)',
       action: () => {

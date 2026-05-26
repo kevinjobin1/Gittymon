@@ -64,6 +64,8 @@ function createMockEnv(): Env {
     SUMMON_CACHE: {} as KVNamespace,
     GAME_SERVER: {} as DurableObjectNamespace,
     GROQ_API_KEY: 'mock-key',
+    ASSETS: {} as Fetcher,
+    REVALIDATE_KEY: 'test-revalidate-key',
   };
 }
 

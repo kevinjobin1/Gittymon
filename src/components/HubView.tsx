@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { RoastMon } from "../types";
 import { playRetroSound } from "../utils/audio";
+import { RetroButton } from "../utils/ripple";
 
 interface HubViewProps {
   mon: RoastMon;
@@ -56,13 +57,18 @@ export function HubView({
       desc: "Embed card in websites & Github readmes",
     },
     {
+      id: "COLLECTION",
+      label: "7. MY COLLECTION",
+      desc: "View saved cards, reroll & compare",
+    },
+    {
       id: "HISTORY",
-      label: "7. ROASTDEC LOGS",
+      label: "8. ROASTDEC LOGS",
       desc: "Previously summoned beasts",
     },
     {
       id: "RESET",
-      label: "8. DISCARD RECORD",
+      label: "9. DISCARD RECORD",
       desc: "Delete data & summon new",
     },
   ];
@@ -137,9 +143,11 @@ export function HubView({
         {OPTIONS.map((opt, idx) => {
           const isSelected = cursor === idx;
           return (
-            <button
+            <RetroButton
               key={opt.id}
-              onClick={() => {
+              variant="bare"
+              press="none"
+              onClick={(e) => {
                 setCursor(idx);
                 playRetroSound("select");
                 onSelectOption(opt.id);
@@ -154,7 +162,7 @@ export function HubView({
                 {isSelected ? "▶" : " "}
               </span>
               <span className="flex-1 truncate">{opt.label}</span>
-            </button>
+            </RetroButton>
           );
         })}
       </div>

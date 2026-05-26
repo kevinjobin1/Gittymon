@@ -6,17 +6,27 @@
 
     <title>Gittymon: Turn any GitHub profile into a savage 8-bit Roast-mon</title>
     <meta name="description" content="Turn any GitHub profile into a savage 8-bit Roast-mon monster — battle bugs, fight AI bosses, and climb the leaderboard. All inside a retro Gameboy shell." />
+    <meta name="keywords" content="gittymon, github profile, roast generator, pixel art, pokemon parody, developer humor, 8-bit monster, github card, coding game, retro gameboy" />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#0f0f13" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <!-- Canonical URL (injected by server with absolute URL) -->
+    <!-- CANONICAL_INJECTED_BY_SERVER -->
 
     <!-- Open Graph -->
-    <meta property="og:title" content="Gittymon — Summon Your Profile Monster" />
-    <meta property="og:description" content="Enter a GitHub username and the app summons a unique Roast-mon monster with stats, moves, a savage AI roast, and custom 8-bit pixel art — then battle it in a Gameboy-styled arena." />
+    <meta property="og:title" content="Gittymon — Turn Every GitHub Profile into a Savage 8-Bit Monster" />
+    <meta property="og:description" content="Enter a GitHub username and Gittymon summons a unique Roast-mon monster with stats, moves, a savage AI roast, and custom 8-bit pixel art — then battle it in a retro Gameboy-styled arena." />
     <!-- OG_IMAGE_INJECTED_BY_SERVER -->
     <meta property="og:image:width" content="1280" />
     <meta property="og:image:height" content="640" />
     <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:alt" content="Gittymon — Retro Gameboy-Style Monster Generator from GitHub Profiles" />
     <!-- OG_URL_INJECTED_BY_SERVER -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Gittymon" />
+    <meta property="og:locale" content="en_US" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
@@ -24,7 +34,89 @@
     <meta name="twitter:description" content="Enter a GitHub username and the app summons a unique Roast-mon monster with stats, moves, a savage AI roast, and custom 8-bit pixel art — all inside a retro Gameboy shell." />
     <!-- TWITTER_IMAGE_INJECTED_BY_SERVER -->
 
+    <!-- Resource Hints -->
+    <link rel="preconnect" href="https://api.github.com" />
+    <link rel="preconnect" href="https://api.groq.com" />
+    <link rel="dns-prefetch" href="https://github.com" />
+    <link rel="preconnect" href="https://avatars.githubusercontent.com" />
+
+    <!-- SEO Links -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+
+    <!-- JSON-LD Structured Data: WebApplication -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Gittymon",
+      "url": "https://gittymon.dev",
+      "description": "Turn any GitHub profile into a savage 8-bit Roast-mon monster with AI-generated stats, moves, and pixel art. Battle bugs, fight AI bosses, and climb the leaderboard inside a retro Gameboy shell.",
+      "applicationCategory": "GameApplication",
+      "operatingSystem": "Web",
+      "browserRequirements": "Requires JavaScript",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "author": {
+        "@type": "Person",
+        "name": "Kevin Jobin",
+        "url": "https://github.com/kevinjobin1"
+      }
+    }
+    </script>
+
+    <!-- JSON-LD Structured Data: FAQ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is Gittymon?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Gittymon is a free web app that turns any GitHub profile into a unique 8-bit monster called a Roast-mon. Each monster has AI-generated stats, moves, and a savage roast based on the user's GitHub activity — all displayed inside a faithfully recreated Game Boy Advance SP console."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I summon a Gittymon?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Just enter a GitHub username on the splash screen and Gittymon will fetch their public profile data, generate a unique monster name, type, stats, four battle moves, and a personalized AI roast. The result is cached so repeated lookups are instant."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I embed my Gittymon card on GitHub?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes! Gittymon provides 13 export formats including Markdown badges, animated GIF cards, SVG cards, shields.io badges, BBCode forum signatures, and HTML embed codes. Paste the Markdown badge into your GitHub README for a live-updating card."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is Gittymon free to use?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, Gittymon is completely free. Monster generation uses the Groq AI API (Llama 3) with a free tier that handles thousands of requests per day. All features including PvP battles, AI boss fights, leaderboards, and embed cards are free."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do Gittymon stats work?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Each Gittymon has five stats (HP, Attack, Defense, Speed, Chaos) from 10-100, and four custom battle moves with individual power ratings. Stats are influenced by the GitHub user's public repo count, follower count, account age, and bio — creating a truly unique monster for every profile."
+          }
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

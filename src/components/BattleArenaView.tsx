@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { RoastMon, BattleState } from '../types';
 import { drawProceduralMon } from '../utils/procGen';
 import { playRetroSound } from '../utils/audio';
+import { RetroButton } from '../utils/ripple';
 
 interface BattleArenaViewProps {
   playerMon: RoastMon;
@@ -546,15 +547,14 @@ export function BattleArenaView({
             <div className="font-bold text-[#7f001c] uppercase text-center py-1">
               {battleState.result === 'WIN' ? '* VICTORY OVER EXCEPTION *' : battleState.result === 'RUN' ? '* RETREAT SUCCESSFUL *' : '* CRITICAL STACKS OVERFLOW *'}
             </div>
-            <button
-              onClick={() => {
-                playRetroSound('beep');
-                onExit();
-              }}
-              className="w-full text-center py-1 bg-[#1a1a1a] text-white font-bold cursor-pointer rounded-sm hover:invert"
+            <RetroButton
+              variant="bare"
+              press="light"
+              onClick={(e) => { playRetroSound('beep'); onExit(); }}
+              className="w-full text-center py-1 bg-[#1a1a1a] text-white font-bold rounded-sm hover:invert"
             >
               PRESS TARGET [A] TO RESET
-            </button>
+            </RetroButton>
           </div>
         ) : (
           // Menu selection
@@ -562,65 +562,70 @@ export function BattleArenaView({
             {activeMenu === 'MAIN' ? (
               // Main Grid Option list
               <div className="flex-1 grid grid-cols-2 gap-1 p-0.5 font-bold">
-                <button
-                  onClick={() => {
-                    playRetroSound('beep');
-                    setActiveMenu('FIGHT');
-                    setMainCursor(0);
-                  }}
+                <RetroButton
+                  variant="bare"
+                  press="light"
+                  onClick={(e) => { playRetroSound('beep'); setActiveMenu('FIGHT'); setMainCursor(0); }}
                   onMouseEnter={() => setMainCursor(0)}
-                  className={`flex items-center select-none text-left cursor-pointer transition-colors ${mainCursor === 0 ? 'text-[#7f001c] font-black' : 'text-[#1a1a1a] hover:text-[#7f001c]'}`}
+                  className={`flex items-center select-none text-left transition-colors ${mainCursor === 0 ? 'text-[#7f001c] font-black' : 'text-[#1a1a1a] hover:text-[#7f001c]'}`}
                 >
                   <span className="mr-1">{mainCursor === 0 ? '▶' : '▷'}</span>FIGHT
-                </button>
-                <button
-                  onClick={handleHeal}
+                </RetroButton>
+                <RetroButton
+                  variant="bare"
+                  press="light"
+                  onClick={(e) => { handleHeal(); }}
                   onMouseEnter={() => setMainCursor(1)}
-                  className={`flex items-center select-none text-left cursor-pointer transition-colors ${mainCursor === 1 ? 'text-[#7f001c] font-black' : 'text-[#1a1a1a] hover:text-[#7f001c]'}`}
+                  className={`flex items-center select-none text-left transition-colors ${mainCursor === 1 ? 'text-[#7f001c] font-black' : 'text-[#1a1a1a] hover:text-[#7f001c]'}`}
                 >
                   <span className="mr-1">{mainCursor === 1 ? '▶' : '▷'}</span>REPAIR CODES
-                </button>
-                <button
-                  onClick={handleRoastAttack}
+                </RetroButton>
+                <RetroButton
+                  variant="bare"
+                  press="light"
+                  onClick={(e) => { handleRoastAttack(); }}
                   onMouseEnter={() => setMainCursor(2)}
-                  className={`flex items-center select-none text-left cursor-pointer transition-colors ${mainCursor === 2 ? 'text-[#7f001c] font-black' : 'text-[#1a1a1a] hover:text-[#7f001c]'}`}
+                  className={`flex items-center select-none text-left transition-colors ${mainCursor === 2 ? 'text-[#7f001c] font-black' : 'text-[#1a1a1a] hover:text-[#7f001c]'}`}
                 >
                   <span className="mr-1">{mainCursor === 2 ? '▶' : '▷'}</span>SPIT ROAST
-                </button>
-                <button
-                  onClick={handleRun}
+                </RetroButton>
+                <RetroButton
+                  variant="bare"
+                  press="light"
+                  onClick={(e) => { handleRun(); }}
                   onMouseEnter={() => setMainCursor(3)}
-                  className={`flex items-center select-none text-left cursor-pointer transition-colors ${mainCursor === 3 ? 'text-[#7f001c] font-black' : 'text-[#1a1a1a] hover:text-[#7f001c]'}`}
+                  className={`flex items-center select-none text-left transition-colors ${mainCursor === 3 ? 'text-[#7f001c] font-black' : 'text-[#1a1a1a] hover:text-[#7f001c]'}`}
                 >
                   <span className="mr-1">{mainCursor === 3 ? '▶' : '▷'}</span>QUIT (-9)
-                </button>
+                </RetroButton>
               </div>
             ) : (
               // Attack options panel listing moves
               <div className="flex-1 flex flex-col justify-between">
                 <div className="grid grid-cols-2 gap-0.5 p-0.5 font-bold">
                   {playerMon.moves.map((move, idx) => (
-                    <button
+                    <RetroButton
                       key={idx}
-                      onClick={() => handleAttack(idx)}
+                      variant="bare"
+                      press="light"
+                      onClick={(e) => { handleAttack(idx); }}
                       onMouseEnter={() => setFightCursor(idx)}
-                      className={`text-left py-0.5 select-none truncate cursor-pointer transition-colors ${fightCursor === idx ? 'text-[#7f001c] font-black' : 'text-gray-750 hover:text-[#7f001c]'}`}
+                      className={`text-left py-0.5 select-none truncate transition-colors ${fightCursor === idx ? 'text-[#7f001c] font-black' : 'text-gray-750 hover:text-[#7f001c]'}`}
                       title={move.desc}
                     >
                       <span className="mr-0.5">{fightCursor === idx ? '▶' : '▷'}</span>
                       {move.name.toUpperCase()}
-                    </button>
+                    </RetroButton>
                   ))}
                 </div>
-                <button
-                  onClick={() => {
-                    playRetroSound('beep');
-                    setActiveMenu('MAIN');
-                  }}
-                  className="text-center font-bold text-[7px] text-gray-500 hover:text-[#1a1a1a] border-t border-dashed border-gray-200 mt-1 cursor-pointer"
+                <RetroButton
+                  variant="bare"
+                  press="light"
+                  onClick={(e) => { playRetroSound('beep'); setActiveMenu('MAIN'); }}
+                  className="text-center font-bold text-[7px] text-gray-500 hover:text-[#1a1a1a] border-t border-dashed border-gray-200 mt-1"
                 >
                   [B] CANCEL (BACK TO MENU)
-                </button>
+                </RetroButton>
               </div>
             )}
           </div>

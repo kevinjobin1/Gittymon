@@ -9,6 +9,8 @@ export interface LeaderboardEntry {
   wins: number;
   losses: number;
   avatarUrl: string;
+  /** ISO date string of the last time this player battled. Used for sitemap lastmod. */
+  lastBattledAt?: string;
 }
 
 export interface ServerSpriteResult {

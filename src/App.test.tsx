@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { IdentityProvider } from './lib/IdentityContext';
 
 // ---------------------------------------------------------------------------
 // Mock all lazy-loaded screen components
@@ -236,7 +237,11 @@ async function renderApp() {
 
   await act(async () => {
     const Module = await import('./App');
-    const result = render(<Module.default />);
+    const result = render(
+      <IdentityProvider>
+        <Module.default />
+      </IdentityProvider>
+    );
     container = result.container;
   });
 

@@ -1,8 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { RoastMon } from '../types';
+import type { GittymonCard } from '../types';
 import { drawProceduralMon, drawDitheredAvatar, PALETTE_NAMES } from '../utils/procGen';
 import type { PaletteName } from '../utils/procGen';
 import { playRetroSound } from '../utils/audio';
+import { RetroButton } from '../utils/ripple';
+import { useIdentity } from '../lib/useIdentity';
+import { RARITY_CONFIGS } from '../lib/rarity';
 
 interface MonDetailsViewProps {
   mon: RoastMon;
@@ -11,6 +15,18 @@ interface MonDetailsViewProps {
 }
 
 export function MonDetailsView({ mon, onBattle, onBack }: MonDetailsViewProps) {
+  const { identity } = useIdentity();
+
+  // Find the GittymonCard matching this active mon (most recent by username)
+  const matchingCard: GittymonCard | undefined = useMemo(() => {
+    if (!identity) return undefined;
+    const matches = identity.cards.filter((c) => c.base.username === mon.username);
+    if (matches.length === 0) return undefined;
+    return matches.reduce((a, b) => (a.createdAt > b.createdAt ? a : b));
+  }, [identity, mon.username]);
+
+  const rarityConfig = matchingCard ? RARITY_CONFIGS[matchingCard.rarity] : null;
+
   const [activeTab, setActiveTab] = useState<'ROAST' | 'STATS' | 'MOVES'>('ROAST');
   const [viewMode, setViewMode] = useState<'MONSTER' | 'AVATAR'>('MONSTER');
   const [paletteOverride, setPaletteOverride] = useState<PaletteName | undefined>(undefined);
@@ -66,8 +82,21 @@ export function MonDetailsView({ mon, onBattle, onBack }: MonDetailsViewProps) {
     <div className="flex-1 flex flex-col justify-between py-1 px-1 text-[#1a1a1a] select-none">
       {/* Top Header details */}
       <div className="flex justify-between items-center border-b border-[#1a1a1a] pb-1 dither-border-b font-mono text-[9px] font-bold">
-        <span>{mon.name.toUpperCase()}</span>
-        <span className="text-[#7f001c]">LV {mon.level}</span>
+        <span className="truncate">{mon.name.toUpperCase()}</span>
+        <div className="flex items-center gap-1 shrink-0">
+          {rarityConfig && (
+            <span
+              className="px-1 py-[1px] rounded-full text-[5.5px] font-black uppercase tracking-wider leading-none"
+              style={{
+                backgroundColor: rarityConfig.color,
+                color: rarityConfig.textColor,
+              }}
+            >
+              {rarityConfig.label}
+            </span>
+          )}
+          <span className="text-[#7f001c]">LV {mon.level}</span>
+        </div>
       </div>
 
       {/* Visual Canvas Panel and Character Overview */}
@@ -103,6 +132,18 @@ export function MonDetailsView({ mon, onBattle, onBack }: MonDetailsViewProps) {
             <span className="text-gray-500 text-[8px] uppercase font-bold leading-none">BORN IN:</span>
             <span className="font-bold">{mon.joinedYear} @ {mon.location.split(',')[0].slice(0, 10)}</span>
           </div>
+          {matchingCard && (
+            <>
+              <div className="flex flex-col">
+                <span className="text-gray-500 text-[8px] uppercase font-bold leading-none">FORM:</span>
+                <span className="font-bold truncate">{matchingCard.form.name.toUpperCase()}</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-gray-500 text-[8px] uppercase font-bold leading-none">TIER:</span>
+                <span className="font-bold">{matchingCard.evolutionTier}/5</span>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -111,17 +152,19 @@ export function MonDetailsView({ mon, onBattle, onBack }: MonDetailsViewProps) {
         {(['ROAST', 'STATS', 'MOVES'] as const).map((tab) => {
           const active = activeTab === tab;
           return (
-            <button
+            <RetroButton
               key={tab}
+              variant="bare"
+              press="none"
               onClick={() => handleTabChange(tab)}
-              className={`flex-1 py-1 text-center border cursor-pointer outline-none uppercase transition-colors ${
+              className={`flex-1 py-1 text-center border outline-none uppercase transition-colors ${
                 active
                   ? 'bg-white border-[#1a1a1a] text-[#7f001c]'
                   : 'border-transparent text-[#1a1a1a] hover:bg-white/40'
               }`}
             >
               {tab}
-            </button>
+            </RetroButton>
           );
         })}
       </div>
@@ -134,6 +177,35 @@ export function MonDetailsView({ mon, onBattle, onBack }: MonDetailsViewProps) {
             {mon.bio && (
               <p className="text-[7.5px] text-gray-400 border-t border-dashed border-gray-300 pt-1 truncate">
                 BIO: {mon.bio}
+              </p>
+            )}
+            {matchingCard && matchingCard.mutations.length > 0 && (
+              <div className="border-t border-dashed border-gray-300 pt-1 mt-1">
+                <span className="text-[7px] font-bold text-gray-400 uppercase">MUTATIONS:</span>
+                <div className="flex flex-wrap gap-0.5 mt-0.5">
+                  {matchingCard.mutations.map((m) => {
+                    const cfg = RARITY_CONFIGS[matchingCard.rarity];
+                    return (
+                      <span
+                        key={m.id}
+                        className="px-1 py-[1px] rounded text-[6px] font-bold uppercase leading-tight"
+                        style={{
+                          backgroundColor: cfg.color + '22',
+                          color: cfg.color,
+                          border: `1px solid ${cfg.color}44`,
+                        }}
+                        title={m.effect}
+                      >
+                        {m.label}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {matchingCard && matchingCard.mutations.length === 0 && (
+              <p className="text-[7px] text-gray-400 border-t border-dashed border-gray-300 pt-1 mt-1">
+                No mutations — pure stock code.
               </p>
             )}
           </div>
@@ -182,25 +254,29 @@ export function MonDetailsView({ mon, onBattle, onBack }: MonDetailsViewProps) {
 
       {/* Bottom control shortcuts bar */}
       <div className="flex justify-between items-center border-t border-dashed border-[#1a1a1a] pt-1">
-        <button
-          onClick={() => {
+        <RetroButton
+          variant="bare"
+          press="none"
+          onClick={(e) => {
             playRetroSound('beep');
             onBack();
           }}
-          className="font-mono text-[8.5px] font-bold text-gray-500 hover:text-[#1a1a1a] cursor-pointer"
+          className="font-mono text-[8.5px] font-bold text-gray-500 hover:text-[#1a1a1a]"
         >
           &lt; B-BACK
-        </button>
+        </RetroButton>
 
-        <button
-          onClick={() => {
+        <RetroButton
+          variant="default"
+          press="press"
+          onClick={(e) => {
             playRetroSound('sweep');
             onBattle();
           }}
-          className="retro-btn-ingame px-3 py-1 text-[8.5px] font-bold cursor-pointer transition-transform"
+          className="px-3 py-1 text-[8.5px] font-bold transition-transform"
         >
           A-BATTLE BUG!
-        </button>
+        </RetroButton>
       </div>
     </div>
   );

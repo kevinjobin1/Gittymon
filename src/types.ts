@@ -6,7 +6,7 @@ export interface Stats {
   chaos: number;
 }
 
-export interface Move {
+interface Move {
   name: string;
   power: number;
   desc: string;
@@ -50,7 +50,7 @@ export interface PlayerSession {
   pNumber: number;
 }
 
-export interface RoomPlayer {
+interface RoomPlayer {
   username: string;
   mon: RoastMon;
   hp: number;
@@ -82,9 +82,9 @@ export interface GroqResponse {
   }[];
 }
 
-export type PvpAction = 'MOVE' | 'HEAL' | 'SPIT_ROAST';
+type PvpAction = 'MOVE' | 'HEAL' | 'SPIT_ROAST';
 
-export interface PvpTurnAction {
+interface PvpTurnAction {
   action: PvpAction;
   moveIndex?: number;
 }
@@ -127,13 +127,13 @@ export interface BadgeResponse {
   logoColor: string;
 }
 
-export interface LobbyUpdatePayload {
+interface LobbyUpdatePayload {
   type: 'lobby_update';
   onlineCount: number;
   idlePlayers: string[];
 }
 
-export interface MatchFoundPayload {
+interface MatchFoundPayload {
   type: 'match_found';
   roomId: string;
   pNumber: number;
@@ -148,7 +148,7 @@ export interface SummonCacheEntry {
   generatedAt: string;
 }
 
-export type ScreenID = 'SPLASH' | 'SUMMONING' | 'HUB' | 'DETAILS' | 'BATTLE' | 'HISTORY' | 'LEADERBOARD' | 'PVP_LOBBY' | 'PVP_BATTLE' | 'AI_BOSS_BATTLE' | 'EXPORT_EMBED';
+export type ScreenID = 'SPLASH' | 'SUMMONING' | 'HUB' | 'DETAILS' | 'BATTLE' | 'HISTORY' | 'LEADERBOARD' | 'PVP_LOBBY' | 'PVP_BATTLE' | 'AI_BOSS_BATTLE' | 'EXPORT_EMBED' | 'COLLECTION' | 'COMPARE';
 
 export interface BattleState {
   playerHP: number;
@@ -163,9 +163,47 @@ export interface BattleState {
   result?: 'WIN' | 'LOSE' | 'RUN';
 }
 
+// === v2 Identity Card System Types ===
+
+export type Rarity = 'common' | 'rare' | 'epic' | 'legendary' | 'glitched';
+
+export interface Mutation {
+  id: string;
+  label: string;
+  effect: string;
+}
+
+export interface CardForm {
+  name: string;
+  variant: string;
+}
+
+export interface GittymonCard {
+  id: string;
+  base: RoastMon;
+  rarity: Rarity;
+  form: CardForm;
+  mutations: Mutation[];
+  rerollCount: number;
+  evolutionTier: number;
+  isFavorite: boolean;
+  createdAt: number;
+}
+
+export interface UserIdentity {
+  username: string;
+  cards: GittymonCard[];
+  favoriteCardId: string | null;
+  totalRerolls: number;
+  createdAt: number;
+  lastVisitedAt: number;
+}
+
 export interface Env {
   LEADERBOARD: KVNamespace;
   SUMMON_CACHE: KVNamespace;
   GAME_SERVER: DurableObjectNamespace;
   GROQ_API_KEY?: string;
+  ASSETS: Fetcher;
+  REVALIDATE_KEY?: string;
 }

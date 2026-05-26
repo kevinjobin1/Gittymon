@@ -29,15 +29,18 @@ export async function recordMatchResult(
 ): Promise<LeaderboardEntry[]> {
   const leaderboard = await loadLeaderboard(kv);
 
+  const now = new Date().toISOString();
+
   const getOrCreateEntry = (username: string, monName: string, level: number, avatarUrl: string) => {
     let entry = leaderboard.find(e => e.username.toLowerCase() === username.toLowerCase());
     if (!entry) {
-      entry = { username, monName, level, wins: 0, losses: 0, avatarUrl: avatarUrl || `https://github.com/${username}.png` };
+      entry = { username, monName, level, wins: 0, losses: 0, avatarUrl: avatarUrl || `https://github.com/${username}.png`, lastBattledAt: now };
       leaderboard.push(entry);
     } else {
       entry.monName = monName;
       entry.level = Math.max(entry.level, level);
       if (avatarUrl) entry.avatarUrl = avatarUrl;
+      entry.lastBattledAt = now;
     }
     return entry;
   };

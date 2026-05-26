@@ -6,7 +6,7 @@
 
 const IS_WORKER = typeof navigator === 'undefined' && typeof process !== 'undefined' && process?.release?.name === 'node';
 
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 const LEVELS: Record<LogLevel, number> = {
   debug: 0,
@@ -19,7 +19,7 @@ let currentLevel: LogLevel =
   (typeof localStorage !== 'undefined' && (localStorage.getItem('log_level') as LogLevel)) ||
   'info';
 
-export function setLogLevel(level: LogLevel) {
+function setLogLevel(level: LogLevel) {
   currentLevel = level;
   if (typeof localStorage !== 'undefined') {
     localStorage.setItem('log_level', level);

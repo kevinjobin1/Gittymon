@@ -224,7 +224,7 @@ export function drawCardFrame(
 }
 
 // Render a static card (frame 0) and return the canvas
-export function renderStaticCard(data: CardData): HTMLCanvasElement {
+function renderStaticCard(data: CardData): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = 460;
   canvas.height = 220;

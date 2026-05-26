@@ -4,6 +4,22 @@ import { generateSvgCard, generateGifCard } from './embed';
 import { GameServer } from './multiplayer';
 import { Env, RoastMon, GithubData, GroqResponse, AiBossCommentRequest, BadgeResponse } from './types';
 import { SHELL_HTML } from './shellHtml';
+import { render } from './entry-server';
+
+// Cached SSR HTML — the SPA always renders the same initial splash screen,
+// so we render once and reuse the result across requests per Worker isolate.
+let ssrResult: string | null = null;
+
+async function getSsrHtml(): Promise<string> {
+  if (ssrResult != null) return ssrResult;
+  try {
+    ssrResult = await render();
+  } catch (err) {
+    console.error('SSR render failed:', err);
+    ssrResult = '';
+  }
+  return ssrResult;
+}
 
 export { GameServer };
 
@@ -58,6 +74,101 @@ function generateMockRoastMon(githubData: GithubData, username: string): RoastMo
   };
 }
 
+// ======== Static SEO Routes ========
+
+const ROBOTS_TXT = `User-agent: *
+Allow: /
+
+# Disallow internal API endpoints
+Disallow: /api/
+
+# Sitemap
+Sitemap: https://gittymon.dev/sitemap.xml
+`;
+
+const SITE_URL = 'https://gittymon.dev';
+const SITEMAP_TTL_MS = 3600_000; // 1 hour — rebuild sitemap periodically to reflect leaderboard changes
+
+// Cached sitemap with expiry — regenerated when the cached copy is older than SITEMAP_TTL_MS
+let cachedSitemap: string | null = null;
+let lastSitemapFetch: number = 0;
+
+async function getSitemap(env: Env): Promise<string> {
+  const now = Date.now();
+  if (cachedSitemap != null && (now - lastSitemapFetch) < SITEMAP_TTL_MS) {
+    return cachedSitemap;
+  }
+  try {
+    cachedSitemap = await buildSitemap(env);
+    lastSitemapFetch = now;
+  } catch (err) {
+    console.error('Sitemap build failed:', err);
+    // If we have a stale cache, keep using it rather than returning nothing
+    if (cachedSitemap == null) {
+      cachedSitemap = await buildSitemapFallback();
+      lastSitemapFetch = now;
+    }
+  }
+  return cachedSitemap;
+}
+
+async function buildSitemap(env: Env): Promise<string> {
+  const today = new Date().toISOString().slice(0, 10);
+  let urls = `<url>
+    <loc>${SITE_URL}/</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>`;
+
+  const leaderboard = await loadLeaderboard(env.LEADERBOARD);
+  for (const entry of leaderboard) {
+    const safeUsername = entry.username.replace(/[&<>"']/g, '');
+    // Use lastBattledAt when available for accurate lastmod, fall back to today
+    const lastmod = entry.lastBattledAt ? entry.lastBattledAt.slice(0, 10) : today;
+    urls += `
+  <url>
+    <loc>${SITE_URL}/card/${escapeXml(safeUsername)}</loc>
+    <lastmod>${lastmod}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`;
+  }
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}
+</urlset>`;
+}
+
+function buildSitemapFallback(): string {
+  const today = new Date().toISOString().slice(0, 10);
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${SITE_URL}/</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>`;
+}
+
+function escapeXml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+
+/**
+ * Inject dynamic SEO metadata into the SPA shell HTML.
+ */
+function injectSeoMeta(html: string, origin: string): string {
+  const absOrigin = origin;
+  return html
+    .replace('<!-- CANONICAL_INJECTED_BY_SERVER -->', `<link rel="canonical" href="${absOrigin}/">`)
+    .replace('<!-- OG_URL_INJECTED_BY_SERVER -->', `<meta property="og:url" content="${absOrigin}/">`)
+    .replace('<!-- OG_IMAGE_INJECTED_BY_SERVER -->', `<meta property="og:image" content="${absOrigin}/social-preview.png">`)
+    .replace('<!-- TWITTER_IMAGE_INJECTED_BY_SERVER -->', `<meta name="twitter:image" content="${absOrigin}/social-preview.png">`);
+}
+
 // ======== Main Worker ========
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -71,6 +182,20 @@ export default {
     }
 
     try {
+      // ---- SEO Routes (served before ASSETS so they work without a file) ----
+      if (path === '/robots.txt') {
+        return new Response(ROBOTS_TXT, {
+          headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'max-age=86400' },
+        });
+      }
+
+      if (path === '/sitemap.xml') {
+        const sitemap = await getSitemap(env);
+        return new Response(sitemap, {
+          headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'max-age=3600, s-maxage=3600, stale-while-revalidate=86400' },
+        });
+      }
+
       // ---- WebSocket upgrade for multiplayer ----
       if (path === '/ws' || path.startsWith('/ws/')) {
         const id = env.GAME_SERVER.idFromName('global-lobby');
@@ -89,20 +214,41 @@ export default {
         return handleCardPage(request, env, cardMatch[1], origin);
       }
 
-      // ---- SPA Routes & Root (with OG injection) ----
-      // Paths without file extensions are SPA routes
-      // Files with extensions that reach the worker don't exist in assets — return 404
+      // ---- Static Assets ----
+      // Serve static files from the assets directory. In dev (via @cloudflare/vite-plugin), the ASSETS
+      // binding proxies to Vite which can transform source files (.tsx, .ts) on the fly. In production,
+      // ASSETS only has built files — source file requests get 404, caught by the handler below.
+      if (request.method === 'GET' || request.method === 'HEAD') {
+        try {
+          const assetResponse = await env.ASSETS.fetch(request);
+          if (assetResponse.status !== 404) {
+            return assetResponse;
+          }
+        } catch {
+          // ASSETS.fetch may throw if the binding is unavailable (e.g., local dev)
+        }
+      }
+
+      // ---- Unhandled file extensions ----
+      // If a path has a file extension and wasn't served by ASSETS, return 404.
+      // This prevents source files (.tsx, .ts, .jsx, .js) from being served as HTML.
       const hasFileExtension = path.includes('.') && !path.endsWith('/');
       if (hasFileExtension && path !== '/') {
         return new Response('Not Found', { status: 404 });
       }
 
-      // SPA fallback: serve index.html with OG tag injection
-      const absOrigin = origin;
-      const html = SHELL_HTML
-        .replace('<!-- OG_URL_INJECTED_BY_SERVER -->', `<meta property="og:url" content="${absOrigin}/">`)
-        .replace('<!-- OG_IMAGE_INJECTED_BY_SERVER -->', `<meta property="og:image" content="${absOrigin}/social-preview.png">`)
-        .replace('<!-- TWITTER_IMAGE_INJECTED_BY_SERVER -->', `<meta name="twitter:image" content="${absOrigin}/social-preview.png">`);
+      // ---- SPA Routes & Root (with SSR + SEO injection) ----
+      // Fall through: serve index.html for all non-file routes that weren't matched by ASSETS
+      let html = SHELL_HTML;
+
+      // Server-side render the React app for initial page load SEO
+      // (rendered once and cached — the SPA always shows the same splash screen)
+      const appHtml = await getSsrHtml();
+      if (appHtml) {
+        html = html.replace('<div id="root"></div>', `<div id="root">${appHtml}</div>`);
+      }
+
+      html = injectSeoMeta(html, origin);
       return new Response(html, {
         headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' },
       });
@@ -125,6 +271,24 @@ async function handleApiRoute(request: Request, env: Env, ctx: ExecutionContext,
   // POST /api/summon
   if (path === '/api/summon' && request.method === 'POST') {
     return handleSummon(request, env);
+  }
+
+  // POST /api/revalidate-sitemap — invalidate cached sitemap so it rebuilds on next request
+  if (path === '/api/revalidate-sitemap' && request.method === 'POST') {
+    if (env.REVALIDATE_KEY) {
+      const providedKey = request.headers.get('X-Revalidate-Key');
+      if (providedKey !== env.REVALIDATE_KEY) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+    }
+    lastSitemapFetch = 0;
+    cachedSitemap = null;
+    return new Response(JSON.stringify({ ok: true, message: 'Sitemap cache invalidated' }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   // GET /api/leaderboard
@@ -436,11 +600,13 @@ async function handleCardPage(request: Request, env: Env, username: string, orig
   const h = escapeHtml;
 
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${h(ogTitle)}</title>
-<meta property="og:title" content="${h(ogTitle)}"><meta property="og:description" content="${h(roast)}"><meta property="og:image" content="${socialPreviewUrl}"><meta property="og:image:width" content="1280"><meta property="og:image:height" content="640"><meta property="og:image:type" content="image/png"><meta property="og:url" content="${cardUrl}"><meta property="og:type" content="website"><meta property="og:site_name" content="Gittymon">
+<meta name="description" content="${h(roast)}"><meta name="robots" content="index, follow"><link rel="canonical" href="${cardUrl}">
+<meta property="og:title" content="${h(ogTitle)}"><meta property="og:description" content="${h(roast)}"><meta property="og:image" content="${socialPreviewUrl}"><meta property="og:image:width" content="1280"><meta property="og:image:height" content="640"><meta property="og:image:type" content="image/png"><meta property="og:image:alt" content="@${cleanUsername}'s Gittymon Monster Card"><meta property="og:url" content="${cardUrl}"><meta property="og:type" content="website"><meta property="og:site_name" content="Gittymon">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${h(ogTitle)}"><meta name="twitter:description" content="${h(roast)}"><meta name="twitter:image" content="${socialPreviewUrl}">
-<style>*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}body{background:#0f0f13;color:#e2dfde;font-family:'Courier New',Courier,monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}.bg-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px);background-size:40px 40px}.container{position:relative;z-index:1;text-align:center;max-width:600px}.logo{font-size:10px;font-weight:900;letter-spacing:3px;color:#7f001c;text-transform:uppercase;margin-bottom:16px}.card-frame{display:inline-block;background:#18181b;border:2px solid #27272a;border-radius:12px;padding:12px;box-shadow:0 0 60px rgba(127,0,28,0.15),0 8px 32px rgba(0,0,0,0.5)}.card-frame img{display:block;max-width:100%;height:auto;image-rendering:pixelated;border-radius:4px}.info{margin-top:20px;display:flex;flex-direction:column;align-items:center;gap:8px}.username{font-size:14px;font-weight:900;color:#fff;letter-spacing:1px}.username span{color:#7f001c}.mon-name{font-size:20px;font-weight:900;color:#fff;letter-spacing:2px;text-shadow:0 0 12px rgba(127,0,28,0.4)}.type-badge{display:inline-block;font-size:8px;font-weight:700;color:#7f001c;border:1px solid #7f001c;border-radius:20px;padding:4px 14px;letter-spacing:1px;text-transform:uppercase}.record{font-size:9px;color:#71717a;letter-spacing:1px}.record strong{color:#a1a1aa}.roast-box{margin-top:12px;background:#1a1a1e;border-left:3px solid #7f001c;border-radius:4px;padding:12px 16px;max-width:460px}.roast-box p{font-size:9px;line-height:1.6;color:#a1a1aa;font-style:italic;text-align:left}.roast-label{font-size:7px;font-weight:700;color:#7f001c;letter-spacing:2px;margin-bottom:6px;text-transform:uppercase}.share-hint{margin-top:24px;font-size:7px;color:#52525b}.footer{margin-top:32px;font-size:7px;color:#3f3f46}.footer a{color:#7f001c;text-decoration:none}</style></head><body><div class="bg-grid"></div><div class="container"><div class="logo">⚡ Gittymon Network ⚡</div><div class="card-frame"><img src="${gifUrl}" width="460" height="220" alt="@${cleanUsername}'s Gittymon Card"></div><div class="info"><div class="username">@<span>${cleanUsername}</span></div><div class="mon-name">${h(monName.toUpperCase())}</div><div class="type-badge">${h(type.toUpperCase())}</div><div class="record">LV ${level} · W: <strong>${wins}</strong> L: <strong>${losses}</strong></div></div><div class="roast-box"><div class="roast-label">📟 System Roast</div><p>"${h(roast)}"</p></div><div class="share-hint">Share this page — Open Graph &amp; Twitter Card enabled</div><div class="footer">Summon your own at <a href="/">gittymon.dev</a></div></div></body></html>`;
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"${h(ogTitle)}","description":"${h(roast)}","url":"${cardUrl}","about":{"@type":"Thing","name":"${h(monName.toUpperCase())}"},"mainEntity":{"@type":"Question","name":"What is @${cleanUsername}'s Gittymon?","acceptedAnswer":{"@type":"Answer","text":"${h(monName.toUpperCase())} is a LV ${level} ${h(type.toUpperCase())}-type Gittymon summoned from @${cleanUsername}'s GitHub profile. Record: ${wins} wins, ${losses} losses."}}}</script>
+<style>*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}body{background:#0f0f13;color:#e2dfde;font-family:'Courier New',Courier,monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}.bg-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px);background-size:40px 40px}.container{position:relative;z-index:1;text-align:center;max-width:600px}.logo{font-size:10px;font-weight:900;letter-spacing:3px;color:#7f001c;text-transform:uppercase;margin-bottom:16px}.card-frame{display:inline-block;background:#18181b;border:2px solid #27272a;border-radius:12px;padding:12px;box-shadow:0 0 60px rgba(127,0,28,0.15),0 8px 32px rgba(0,0,0,0.5)}.card-frame img{display:block;max-width:100%;height:auto;image-rendering:pixelated;border-radius:4px}.info{margin-top:20px;display:flex;flex-direction:column;align-items:center;gap:8px}.username{font-size:14px;font-weight:900;color:#fff;letter-spacing:1px}.username span{color:#7f001c}.mon-name{font-size:20px;font-weight:900;color:#fff;letter-spacing:2px;text-shadow:0 0 12px rgba(127,0,28,0.4)}.type-badge{display:inline-block;font-size:8px;font-weight:700;color:#7f001c;border:1px solid #7f001c;border-radius:20px;padding:4px 14px;letter-spacing:1px;text-transform:uppercase}.record{font-size:9px;color:#71717a;letter-spacing:1px}.record strong{color:#a1a1aa}.roast-box{margin-top:12px;background:#1a1a1e;border-left:3px solid #7f001c;border-radius:4px;padding:12px 16px;max-width:460px}.roast-box p{font-size:9px;line-height:1.6;color:#a1a1aa;font-style:italic;text-align:left}.roast-label{font-size:7px;font-weight:700;color:#7f001c;letter-spacing:2px;margin-bottom:6px;text-transform:uppercase}.share-hint{margin-top:24px;font-size:7px;color:#52525b}.footer{margin-top:32px;font-size:7px;color:#3f3f46}.footer a{color:#7f001c;text-decoration:none}</style></head><body><div class="bg-grid"></div><div class="container"><div class="logo">⚡ Gittymon Network ⚡</div><div class="card-frame"><img src="${gifUrl}" width="460" height="220" alt="@${cleanUsername}'s Gittymon Monster Card — ${h(monName.toUpperCase())} LV ${level}"></div><div class="info"><div class="username">@<span>${cleanUsername}</span></div><div class="mon-name">${h(monName.toUpperCase())}</div><div class="type-badge">${h(type.toUpperCase())}</div><div class="record">LV ${level} · W: <strong>${wins}</strong> L: <strong>${losses}</strong></div></div><div class="roast-box"><div class="roast-label">📟 System Roast</div><p>"${h(roast)}"</p></div><div class="share-hint">Share this page — Open Graph &amp; Twitter Card enabled</div><div class="footer">Summon your own at <a href="/">gittymon.dev</a></div></div></body></html>`;
 
   return new Response(html, {
-    headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' },
+    headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'max-age=3600, s-maxage=3600, stale-while-revalidate=86400' },
   });
 }

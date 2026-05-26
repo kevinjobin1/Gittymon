@@ -101,17 +101,43 @@ button, select, input, [role="button"], a, .cursor-pointer, .pixel-trigger {
 }
 
 .retro-btn-ingame {
+  position: relative;
+  overflow: hidden;
   border: 2px solid #1a1a1a;
   background-color: #7f001c;
   color: #ffffff;
   box-shadow: 2px 2px 0px #1a1a1a;
-  transition: transform 0.05s ease, box-shadow 0.05s ease;
+  transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.1s ease-out;
   font-family: "Courier Prime", monospace;
+  user-select: none;
 }
 
 .retro-btn-ingame:active {
   box-shadow: 0px 0px 0px #1a1a1a;
   transform: translate(2px, 2px);
+}
+
+/* Magnetic press for all interactive triggers */
+.magnetic-press {
+  transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.1s ease-out;
+}
+
+.magnetic-press:active {
+  transform: scale(0.97);
+}
+
+.magnetic-press-light {
+  transition: transform 0.08s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.magnetic-press-light:active {
+  transform: scale(0.95);
+}
+
+/* Ripple container — buttons need position:relative and overflow:hidden */
+.ripple-container {
+  position: relative;
+  overflow: hidden;
 }
 
 .dither-border-b {
@@ -339,6 +365,91 @@ button, select, input, [role="button"], a, .cursor-pointer, .pixel-trigger {
   height: 20px;
   pointer-events: none;
   animation: ripple-effect 0.5s ease-out forwards;
+}
+
+/* Slide-up animation for detail panels */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.2s ease-out forwards;
+}
+
+/* Staggered pop-in for grid cards */
+@keyframes stagger-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.94);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-stagger-pop {
+  animation: stagger-pop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* Shimmer for loading skeletons */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.25) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite ease-in-out;
+}
+
+/* ── Pixel-art custom cursors ── */
+
+/* Inspect crosshair for tilt cards (cyan reticle) */
+.cursor-inspect {
+  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32' style='image-rendering:pixelated;'><path d='M16,3 L16,7 M16,25 L16,29 M3,16 L7,16 M25,16 L29,16' stroke='%2338bdf8' stroke-width='2.5' stroke-linecap='square'/><rect x='11' y='11' width='10' height='10' rx='2' fill='none' stroke='%2338bdf8' stroke-width='2.5'/><rect x='15' y='15' width='2' height='2' fill='%2338bdf8'/></svg>") 16 16, pointer !important;
+}
+
+/* Bulk select checkbox cursor (green check) */
+.cursor-bulk {
+  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32' style='image-rendering:pixelated;'><path d='M2,2 L22,2 L22,22 L2,22 Z' fill='none' stroke='%23a3e635' stroke-width='2.5' stroke-linejoin='miter'/><path d='M7,13 L11,18 L19,7' fill='none' stroke='%23a3e635' stroke-width='3' stroke-linecap='square' stroke-linejoin='miter'/></svg>") 2 2, pointer;
+}
+
+/* Amber hand glove for premium interactive elements (favorites, highlights) */
+.cursor-hand-amber {
+  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32' style='image-rendering:pixelated;'><path d='M10,2 L14,2 L14,10 L18,10 L18,8 L22,8 L22,10 L26,10 L26,12 L30,12 L30,18 L26,24 L16,24 L10,18 Z' fill='%23f59e0b' stroke='%23000000' stroke-width='2.5' stroke-linejoin='round'/></svg>") 12 2, pointer !important;
+}
+
+/* 3D card tilt container — hardware accelerated */
+.perspective-card {
+  perspective: 600px;
+}
+
+.tilt-card {
+  transition: transform 0.15s ease-out;
+  transform-style: preserve-3d;
+  will-change: transform;
 }
 
 /* Pixel Dust Particles */

@@ -1,7 +1,7 @@
 /**
  * Simple hash utility to generate numerical pseudo-random values from a seed string.
  */
-export function getSeedHash(seed: string): number {
+function getSeedHash(seed: string): number {
   let hash = 0;
   for (let i = 0; i < seed.length; i++) {
     hash = seed.charCodeAt(i) + ((hash << 5) - hash);
@@ -10,7 +10,7 @@ export function getSeedHash(seed: string): number {
 }
 
 // Deterministic random numbers from a hash stream
-export class LCG {
+class LCG {
   private state: number;
   constructor(seedHash: number) {
     this.state = seedHash || 123456789;
@@ -25,7 +25,7 @@ export class LCG {
 }
 
 // ── Color Palettes (4 colors: outline, body-fill, light-fill, accent) ──
-export const PALETTES: Record<string, [string, string, string, string]> = {
+const PALETTES: Record<string, [string, string, string, string]> = {
   dmg:    ['#1a1a1a', '#7f001c', '#e2dfde', '#ffffff'],
   pocket: ['#0f172a', '#475569', '#94a3b8', '#f8fafc'],
   ember:  ['#1a1a1a', '#dc2626', '#fdba74', '#fef3c7'],
@@ -39,12 +39,12 @@ export type PaletteName = keyof typeof PALETTES;
 
 // ── Palette selection by seed ──
 export const PALETTE_NAMES = Object.keys(PALETTES) as PaletteName[];
-export function pickPalette(lcg: LCG): PaletteName {
+function pickPalette(lcg: LCG): PaletteName {
   return PALETTE_NAMES[lcg.nextRange(0, PALETTE_NAMES.length)];
 }
 
 // ── Return type for the shared grid builder ──
-export interface SpriteResult {
+interface SpriteResult {
   grid: number[][];           // 24×24 grid 0=empty, 1=outline, 2=body, 3=accent, 4=pattern, 5=glow
   palette: [string, string, string, string];
   paletteName: PaletteName;

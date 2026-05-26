@@ -75,7 +75,7 @@ export function SummoningView({ username, onFinished }: SummoningViewProps) {
       <div className="flex-1 flex flex-col justify-center my-2 space-y-4 px-1">
         <div className="border border-[#1a1a1a] bg-white p-2 h-[120px] flex flex-col font-mono text-[9px] leading-tight overflow-y-auto space-y-1">
           {logs.map((log, index) => (
-            <div key={index} className="flex">
+            <div key={index} className="animate-stagger-pop flex" style={{ animationDelay: `${(index % 6) * 60}ms` }}>
               <span className="text-[#7f001c] mr-1">&gt;</span>
               <span className="uppercase">{log}</span>
             </div>
@@ -101,10 +101,14 @@ export function SummoningView({ username, onFinished }: SummoningViewProps) {
               return (
                 <div
                   key={i}
-                  className={`flex-1 h-full border border-gray-300 transition-colors duration-150 ${
+                  className={`flex-1 h-full border border-gray-300 transition-colors duration-300 relative overflow-hidden ${
                     active ? 'bg-[#7f001c]' : 'bg-transparent'
                   }`}
-                />
+                >
+                  {active && (
+                    <div className="absolute inset-0 animate-shimmer" />
+                  )}
+                </div>
               );
             })}
           </div>

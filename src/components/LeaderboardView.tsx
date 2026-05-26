@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LeaderboardEntry } from '../types';
+import { RetroButton } from '../utils/ripple';
 import { playRetroSound } from '../utils/audio';
 import { LeaderboardSkeleton } from './LoadingSkeletons';
 
@@ -91,7 +92,7 @@ export function LeaderboardView({
   return (
     <div className="flex-1 flex flex-col justify-between p-1 px-1.5 text-[#1a1a1a] select-none font-mono">
       {/* Visual Header */}
-      <div className="flex justify-between items-center border-b-2 border-[#1a1a1a] pb-1 font-bold text-[9px]">
+      <div className="flex justify-between items-center border-b-2 border-[#1a1a1a] pb-1 font-bold text-[9px] animate-stagger-pop">
         <span>HALL OF CODES</span>
         <span className="text-[#7f001c]">TOP {entries.length} SUMMONS</span>
       </div>
@@ -122,7 +123,8 @@ export function LeaderboardView({
               return (
                 <div
                   key={entity.username + actualIdx}
-                  className="flex items-center space-x-1.5 border border-neutral-300 bg-neutral-50 rounded p-1 text-[8.5px] leading-tight shadow-[1px_1px_0px_rgba(0,0,0,0.05)]"
+                  className="animate-stagger-pop flex items-center space-x-1.5 border border-neutral-300 bg-neutral-50 rounded p-1 text-[8.5px] leading-tight shadow-[1px_1px_0px_rgba(0,0,0,0.05)]"
+                  style={{ animationDelay: `${relativeIdx * 80}ms` }}
                 >
                   <img
                     src={entity.avatarUrl}
@@ -166,12 +168,14 @@ export function LeaderboardView({
       </div>
 
       {/* Footer */}
-      <button
-        onClick={onBack}
+      <RetroButton
+        variant="bare"
+        press="press"
+        onClick={() => { onBack(); }}
         className="w-full h-6 border-2 border-[#1a1a1a] bg-[#e1dfde] hover:bg-neutral-300 rounded font-mono text-[8px] font-bold flex items-center justify-center shadow-[1px_1px_0px_#1a1a1a] transition-all active:translate-y-0.5"
       >
         ◀ PRESS B TO RETURN TO HUB
-      </button>
+      </RetroButton>
     </div>
   );
 }

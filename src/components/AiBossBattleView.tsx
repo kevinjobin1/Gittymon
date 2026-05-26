@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { RoastMon } from '../types';
 import { drawProceduralMon } from '../utils/procGen';
 import { playRetroSound } from '../utils/audio';
+import { RetroButton } from '../utils/ripple';
 
 interface AiBossBattleViewProps {
   playerMon: RoastMon;
@@ -349,12 +350,14 @@ export function AiBossBattleView({
             <div className="text-gray-500 text-center text-[7px] max-h-[18px] overflow-hidden truncate">
               {winner === playerMon.username ? 'CYBER-DRAKE CRASHED IN GLORY!' : 'AI ENGINE OVERROLD THE SYSTEM PROFILE.'}
             </div>
-            <button
-              onClick={onExit}
+            <RetroButton
+              variant="bare"
+              press="light"
+              onClick={(e) => { onExit(); }}
               className="w-full bg-[#1a1a1a] text-white py-0.5 mt-1 text-center text-[7.5px] font-bold shadow-[1px_1px_0px_#1a1a1a]"
             >
               PRESS ANY BUTTON TO EXIT
-            </button>
+            </RetroButton>
           </div>
         ) : aiLoading ? (
           <div className="flex-1 flex flex-col items-center justify-center space-y-1 bg-dashed bg-neutral-50 border border-neutral-200 p-1">
@@ -383,21 +386,17 @@ export function AiBossBattleView({
               ].map((opt) => {
                 const isSelected = mainCursor === opt.id;
                 return (
-                  <button
+                  <RetroButton
                     key={opt.id}
-                    onClick={() => {
-                      setMainCursor(opt.id);
-                      if (opt.id === 0) setActiveMenu('FIGHT');
-                      else if (opt.id === 1) executeTurn('HEAL');
-                      else if (opt.id === 2) executeTurn('SPIT_ROAST');
-                      else if (opt.id === 3) onExit();
-                    }}
+                    variant="bare"
+                    press="light"
+                    onClick={(e) => { setMainCursor(opt.id); if (opt.id === 0) setActiveMenu('FIGHT'); else if (opt.id === 1) executeTurn('HEAL'); else if (opt.id === 2) executeTurn('SPIT_ROAST'); else if (opt.id === 3) onExit(); }}
                     className={`text-left block text-[7px] leading-none ${
                       isSelected ? 'text-[#7f001c]' : 'text-neutral-500'
                     }`}
                   >
                     {isSelected ? '▶' : ' '} {opt.str}
-                  </button>
+                  </RetroButton>
                 );
               })}
             </div>
@@ -406,9 +405,9 @@ export function AiBossBattleView({
           <div className="flex-1 flex flex-col justify-between">
             <div className="flex justify-between items-center text-[7.5px] bg-neutral-100 border-b border-neutral-300 px-1 font-bold">
               <span>CHOOSE LOG ATTACKS:</span>
-              <button onClick={() => setActiveMenu('MAIN')} className="text-[#7f001c] hover:underline uppercase text-[6.5px]">
+              <RetroButton variant="bare" press="light" onClick={(e) => { setActiveMenu('MAIN'); }} className="text-[#7f001c] hover:underline uppercase text-[6.5px]">
                 ◀ CANCEL B
-              </button>
+              </RetroButton>
             </div>
 
             {/* 4 Moves selector Grid */}
@@ -416,20 +415,18 @@ export function AiBossBattleView({
               {playerMon.moves.map((move, idx) => {
                 const isSelected = fightCursor === idx;
                 return (
-                  <button
+                  <RetroButton
                     key={move.name}
-                    onClick={() => {
-                      setFightCursor(idx);
-                      executeTurn('MOVE', idx);
-                      setActiveMenu('MAIN');
-                    }}
+                    variant="bare"
+                    press="light"
+                    onClick={(e) => { setFightCursor(idx); executeTurn('MOVE', idx); setActiveMenu('MAIN'); }}
                     className={`flex items-center text-[7px] leading-tight text-left rounded p-0.5 truncate transition-all ${
                       isSelected ? 'bg-neutral-800 text-white font-bold' : 'hover:bg-neutral-200'
                     }`}
                   >
                     <span className="mr-0.5 shrink-0">{isSelected ? '▶' : '  '}</span>
                     <span className="truncate">{move.name.toUpperCase()}</span>
-                  </button>
+                  </RetroButton>
                 );
               })}
             </div>
