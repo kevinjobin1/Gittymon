@@ -31,6 +31,9 @@ export const SHELL_HTML = `<!doctype html>
   </head>
   <body>
     <div id="root"></div>
+    <a href="https://launchpanda.dev/launches" target="_blank" rel="noopener">
+  <img src="https://launchpanda.dev/images/badges/launchpanda-badge.svg" alt="Launched on LaunchPanda" width="260" height="64" />
+</a>
   </body>
 </html>
 `;
