@@ -33,6 +33,7 @@ export const SHELL_HTML = `<!doctype html>
     <div id="root"></div>
     <a href="https://launchpanda.dev/launches" target="_blank" rel="noopener">
   <img src="https://launchpanda.dev/images/badges/launchpanda-badge.svg" alt="Launched on LaunchPanda" width="260" height="64" />
+  <a href="https://verifieddr.com/website/gittymon-kevin-jobin-1-workers-dev" target="_blank"><img src="https://verifieddr.com/badge/gittymon-kevin-jobin-1-workers-dev-dark.svg?style=ring" alt="Verified DR - Verified Domain Rating for gittymon.kevin-jobin-1.workers.dev" width="56" height="56" /></a>
 </a>
   </body>
 </html>
