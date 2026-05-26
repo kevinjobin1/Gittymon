@@ -29,17 +29,26 @@ export function saveLeaderboard(entries: LeaderboardEntry[]): void {
 }
 
 export function recordMatchResult(
-  winner: { username: string; monName: string; level: number; avatarUrl: string },
-  loser: { username: string; monName: string; level: number; avatarUrl: string }
+  winner: { username: string; monName: string; level: number; avatarUrl: string; provider: 'github' | 'gitlab' },
+  loser: { username: string; monName: string; level: number; avatarUrl: string; provider: 'github' | 'gitlab' }
 ): LeaderboardEntry[] {
   const leaderboard = loadLeaderboard();
 
   // Helper to find or create entry
-  const getOrCreateEntry = (username: string, monName: string, level: number, avatarUrl: string) => {
-    let entry = leaderboard.find(e => e.username.toLowerCase() === username.toLowerCase());
+  const entryKey = (username: string, provider: string) => `${provider}:${username}`.toLowerCase();
+  const getOrCreateEntry = (
+    username: string,
+    monName: string,
+    level: number,
+    avatarUrl: string,
+    provider: 'github' | 'gitlab'
+  ) => {
+    const key = entryKey(username, provider);
+    let entry = leaderboard.find(e => entryKey(e.username, e.provider) === key);
     if (!entry) {
       entry = {
         username,
+        provider,
         monName,
         level,
         wins: 0,
@@ -56,10 +65,10 @@ export function recordMatchResult(
     return entry;
   };
 
-  const winEntry = getOrCreateEntry(winner.username, winner.monName, winner.level, winner.avatarUrl);
+  const winEntry = getOrCreateEntry(winner.username, winner.monName, winner.level, winner.avatarUrl, winner.provider);
   winEntry.wins += 1;
 
-  const loseEntry = getOrCreateEntry(loser.username, loser.monName, loser.level, loser.avatarUrl);
+  const loseEntry = getOrCreateEntry(loser.username, loser.monName, loser.level, loser.avatarUrl, loser.provider);
   loseEntry.losses += 1;
 
   const topLeaderboard = sortAndTruncateLeaderboard(leaderboard);

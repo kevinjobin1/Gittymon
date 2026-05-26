@@ -1,6 +1,8 @@
 import { loadLeaderboard } from './leaderboard';
 import { GIFEncoder } from 'gifenc';
 import { Env } from './types';
+import type { GitProvider } from '../shared/types';
+import { getProvider } from './providers';
 import {
   buildServerSpriteGrid,
   getSpriteSvgRects,
@@ -11,9 +13,15 @@ import {
 import type { ServerPaletteName } from '../shared/sprites';
 import { BITMAPS, PixelCanvas, wrapTextToLength } from '../shared/pixelFont';
 
+/** Clean a username using the appropriate provider's sanitization rules, falling back to GitHub */
+function sanitizeUsername(username: string, provider?: GitProvider): string {
+  const p = provider ? getProvider(provider) : getProvider('github');
+  return p.sanitizeUsername(username.trim()) || 'x';
+}
+
 // ======== SVG Card Generator (MonDetailsView Layout) ========
-export async function generateSvgCard(username: string, env: Env, palette?: string): Promise<string> {
-  const cleanUsername = (username.trim().replace(/[^a-zA-Z0-9-]/g, '')) || 'x';
+export async function generateSvgCard(username: string, env: Env, palette?: string, provider?: GitProvider): Promise<string> {
+  const cleanUsername = sanitizeUsername(username, provider);
   // Validate palette name
   const paletteOverride = palette && SERVER_PALETTE_NAMES.includes(palette as ServerPaletteName)
     ? (palette as ServerPaletteName) : undefined;
@@ -129,8 +137,8 @@ export async function generateSvgCard(username: string, env: Env, palette?: stri
 }
 
 // ======== GIF Card Generator (MonDetailsView Layout, 230×110) ========
-export async function generateGifCard(username: string, env: Env, palette?: string): Promise<Uint8Array> {
-  const cleanUsername = (username.trim().replace(/[^a-zA-Z0-9-]/g, '')) || 'x';
+export async function generateGifCard(username: string, env: Env, palette?: string, provider?: GitProvider): Promise<Uint8Array> {
+  const cleanUsername = sanitizeUsername(username, provider);
   // Validate palette name
   const paletteOverride = palette && SERVER_PALETTE_NAMES.includes(palette as ServerPaletteName)
     ? (palette as ServerPaletteName) : undefined;

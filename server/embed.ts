@@ -9,6 +9,8 @@ import {
 } from '../shared/sprites.js';
 import type { ServerPaletteName } from '../shared/sprites.js';
 import { BITMAPS, PixelCanvas, wrapTextToLength } from '../shared/pixelFont.js';
+import { detectProvider, getProvider } from '../src/providers/index.js';
+import type { IProfileProvider } from '../src/providers/types.js';
 
 function createGIFEncoder(opts?: any) {
   const anyGifenc = gifenc as any;
@@ -22,8 +24,9 @@ function createGIFEncoder(opts?: any) {
 }
 
 // ======== SVG Card Generator (MonDetailsView Layout) ========
-export function generateSvgCard(username: string, palette?: string): string {
-  const cleanUsername = (username.trim().replace(/[^a-zA-Z0-9-]/g, '')) || 'x';
+export function generateSvgCard(username: string, palette?: string, provider?: string): string {
+  const prov: IProfileProvider = provider === 'gitlab' ? getProvider('gitlab') : detectProvider(username);
+  const cleanUsername = prov.sanitizeUsername(username) || 'x';
   // Validate palette name
   const paletteOverride = palette && SERVER_PALETTE_NAMES.includes(palette as ServerPaletteName)
     ? (palette as ServerPaletteName) : undefined;
@@ -134,7 +137,7 @@ export function generateSvgCard(username: string, palette?: string): string {
   <text x="114" y="53" fill="#6b7280" font-family="monospace" font-size="7" font-weight="bold">REPOS/FOLLOWER:</text>
   <text x="192" y="53" fill="#1a1a1a" font-family="monospace" font-size="7" font-weight="bold">${githubMockData.public_repos} / ${githubMockData.followers}</text>
   <text x="114" y="66" fill="#6b7280" font-family="monospace" font-size="7" font-weight="bold">BORN IN:</text>
-  <text x="158" y="66" fill="#1a1a1a" font-family="monospace" font-size="7" font-weight="bold">${githubMockData.joinedYear} @ GitHub</text>
+  <text x="158" y="66" fill="#1a1a1a" font-family="monospace" font-size="7" font-weight="bold">${githubMockData.joinedYear} @ ${prov.provider === 'gitlab' ? 'GitLab' : 'GitHub'}</text>
   ${statBarsSvg}
   ${movesSvg}
   <line x1="8" y1="167" x2="${W - 8}" y2="167" stroke="#d1d5db" stroke-width="0.5" stroke-dasharray="3,3" />
@@ -147,8 +150,9 @@ export function generateSvgCard(username: string, palette?: string): string {
 }
 
 // ======== GIF Card Generator (MonDetailsView Layout, 230×110) ========
-export function generateGifCard(username: string, palette?: string): Buffer {
-  const cleanUsername = (username.trim().replace(/[^a-zA-Z0-9-]/g, '')) || 'x';
+export function generateGifCard(username: string, palette?: string, provider?: string): Buffer {
+  const prov: IProfileProvider = provider === 'gitlab' ? getProvider('gitlab') : detectProvider(username);
+  const cleanUsername = prov.sanitizeUsername(username) || 'x';
   // Validate palette name
   const paletteOverride = palette && SERVER_PALETTE_NAMES.includes(palette as ServerPaletteName)
     ? (palette as ServerPaletteName) : undefined;
@@ -307,6 +311,7 @@ export function generateGifCard(username: string, palette?: string): Buffer {
 
     // BORN
     canvas.drawText(`BORN:${githubMockData.joinedYear}`, infoX, 26, 1);
+    canvas.drawText(`@${prov.provider === 'gitlab' ? 'GL' : 'GH'}`, infoX + 30, 26, 13);
 
     // Stat bars
     const statsLabels = [

@@ -20,6 +20,8 @@ const ExportEmbedView = lazy(() => import('./components/ExportEmbedView').then(m
 export default function App() {
   const [screen, setScreen] = useState<ScreenID>('SPLASH');
   const [selectedUsername, setSelectedUsername] = useState('');
+  const [summonProvider, setSummonProvider] = useState<string | undefined>(undefined);
+  const [summonFallbackWarning, setSummonFallbackWarning] = useState<string | null>(null);
   const [activeMon, setActiveMon] = useState<RoastMon | null>(null);
   const [historyList, setHistoryList] = useState<RoastMon[]>([]);
 
@@ -296,8 +298,10 @@ export default function App() {
   };
 
   // Launch async summon request
-  const handleSummonInitiate = async (username: string) => {
+  const handleSummonInitiate = useCallback(async (username: string, provider?: string) => {
     setSelectedUsername(username);
+    setSummonProvider(provider);
+    setSummonFallbackWarning(null);
     setScreen('SUMMONING');
     fetchedMonRef.current = null;
     apiLoadCompletedRef.current = false;
@@ -306,7 +310,7 @@ export default function App() {
       const res = await fetch('/api/summon', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username })
+        body: JSON.stringify({ username, ...(provider ? { provider } : {}) })
       });
 
       if (!res.ok) {
@@ -314,12 +318,22 @@ export default function App() {
       }
 
       const rawMon: RoastMon = await res.json();
+
+      // Surface fallback warnings from the server
+      if (rawMon._fallback && rawMon._fallbackMessage) {
+        setSummonFallbackWarning(rawMon._fallbackMessage);
+      }
+
       fetchedMonRef.current = rawMon;
       apiLoadCompletedRef.current = true;
     } catch (err) {
       console.error('Core summon request failed. Drawing default monster.', err);
+      setSummonFallbackWarning('Server unreachable. Using offline fallback data.');
       const localMock: RoastMon = {
         username: username,
+        provider: 'github',
+        _fallback: true,
+        _fallbackMessage: 'Server unreachable. Using offline fallback.',
         name: 'OfflineBeast',
         avatarUrl: `https://github.com/${username}.png`,
         type: 'Offline Code Type',
@@ -342,7 +356,7 @@ export default function App() {
       fetchedMonRef.current = localMock;
       apiLoadCompletedRef.current = true;
     }
-  };
+  }, []);
 
   // Handles transition on loader finish
   const handleSummonFinished = () => {
@@ -494,7 +508,12 @@ export default function App() {
           </ScreenView>
 
           <ScreenView id="SUMMONING">
-            <SummoningView username={selectedUsername} onFinished={handleSummonFinished} />
+            <SummoningView
+              username={selectedUsername}
+              provider={summonProvider}
+              fallbackWarning={summonFallbackWarning}
+              onFinished={handleSummonFinished}
+            />
           </ScreenView>
 
           <ScreenView id="HUB" active={screen === 'HUB' && !!activeMon}>

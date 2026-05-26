@@ -1,4 +1,5 @@
 import { LeaderboardEntry } from './types';
+import type { GitProvider } from '../shared/types';
 import { DEFAULT_LEADERBOARD, sortAndTruncateLeaderboard } from '../shared/leaderboard';
 
 const LEADERBOARD_KEY = 'leaderboard_data';
@@ -24,15 +25,18 @@ export async function saveLeaderboard(kv: KVNamespace, entries: LeaderboardEntry
 
 export async function recordMatchResult(
   kv: KVNamespace,
-  winner: { username: string; monName: string; level: number; avatarUrl: string },
-  loser: { username: string; monName: string; level: number; avatarUrl: string }
+  winner: { username: string; monName: string; level: number; avatarUrl: string; provider: GitProvider },
+  loser: { username: string; monName: string; level: number; avatarUrl: string; provider: GitProvider }
 ): Promise<LeaderboardEntry[]> {
   const leaderboard = await loadLeaderboard(kv);
 
-  const getOrCreateEntry = (username: string, monName: string, level: number, avatarUrl: string) => {
-    let entry = leaderboard.find(e => e.username.toLowerCase() === username.toLowerCase());
+  const entryKey = (username: string, provider: GitProvider) => `${provider}:${username}`.toLowerCase();
+
+  const getOrCreateEntry = (username: string, monName: string, level: number, avatarUrl: string, provider: GitProvider) => {
+    const key = entryKey(username, provider);
+    let entry = leaderboard.find(e => entryKey(e.username, e.provider) === key);
     if (!entry) {
-      entry = { username, monName, level, wins: 0, losses: 0, avatarUrl: avatarUrl || `https://github.com/${username}.png` };
+      entry = { username, provider, monName, level, wins: 0, losses: 0, avatarUrl };
       leaderboard.push(entry);
     } else {
       entry.monName = monName;
@@ -42,10 +46,10 @@ export async function recordMatchResult(
     return entry;
   };
 
-  const winEntry = getOrCreateEntry(winner.username, winner.monName, winner.level, winner.avatarUrl);
+  const winEntry = getOrCreateEntry(winner.username, winner.monName, winner.level, winner.avatarUrl, winner.provider);
   winEntry.wins += 1;
 
-  const loseEntry = getOrCreateEntry(loser.username, loser.monName, loser.level, loser.avatarUrl);
+  const loseEntry = getOrCreateEntry(loser.username, loser.monName, loser.level, loser.avatarUrl, loser.provider);
   loseEntry.losses += 1;
 
   const top = sortAndTruncateLeaderboard(leaderboard);

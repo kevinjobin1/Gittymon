@@ -2,30 +2,16 @@ import React, { useState, useEffect, useRef } from "react";
 import { playRetroSound } from "../utils/audio";
 import { drawCardFrame } from "../utils/cardRenderer";
 import type { CardData } from "../utils/cardRenderer";
+import { parseProviderInput } from "../providers";
 
 interface SplashViewProps {
-  onSummon: (username: string) => void;
+  onSummon: (username: string, provider?: string) => void;
 }
 
-function parseGitHubUsername(input: string): string | null {
-  const trimmed = input.trim();
-  if (!trimmed) return null;
-
-  // Strip leading @
-  let username = trimmed.startsWith("@") ? trimmed.slice(1) : trimmed;
-
-  // Extract from GitHub URL
-  const githubMatch = username.match(
-    /(?:https?:\/\/)?(?:www\.)?github\.com\/([a-zA-Z0-9-]+)/
-  );
-  if (githubMatch) {
-    username = githubMatch[1];
-  }
-
-  // Validate: only alphanumeric and hyphens
-  if (!/^[a-zA-Z0-9-]+$/.test(username)) return null;
-
-  return username;
+function parseProviderInputString(input: string): { username: string; provider?: string } | null {
+  const result = parseProviderInput(input);
+  if (!result) return null;
+  return { username: result.username, provider: result.provider.provider };
 }
 
 // Hardcoded demo card data for 'octocat' preview
@@ -55,6 +41,36 @@ export function SplashView({ onSummon }: SplashViewProps) {
       inputRef.current.focus();
     }
   }, []);
+
+  // Parse ?username= and ?provider= query params to auto-summon on page load
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlUsername = params.get('username');
+    const urlProvider = params.get('provider');
+
+    if (!urlUsername) return;
+
+    // Validate the provider param if given
+    const validProvider = urlProvider === 'gitlab' || urlProvider === 'github' ? urlProvider : undefined;
+
+    // Slight delay to let the splash screen render before auto-summoning
+    const timer = setTimeout(() => {
+      setUsername(urlUsername);
+      const parsed = validProvider
+        ? { username: urlUsername.replace(/[^a-zA-Z0-9._-]/g, ''), provider: validProvider }
+        : parseProviderInputString(urlUsername);
+
+      if (!parsed || !parsed.username) {
+        setError(`Invalid username from URL: "${urlUsername}"`);
+        return;
+      }
+
+      playRetroSound('sweep');
+      onSummon(parsed.username, parsed.provider);
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [onSummon]);
 
   // Animated demo canvas preview
   useEffect(() => {
@@ -88,15 +104,15 @@ export function SplashView({ onSummon }: SplashViewProps) {
     e?.preventDefault();
     setError("");
 
-    const parsed = parseGitHubUsername(username);
+    const parsed = parseProviderInputString(username);
     if (!parsed) {
-      setError("Enter a valid GitHub username");
+      setError("Enter a valid Git username");
       playRetroSound("accent");
       return;
     }
 
     playRetroSound("sweep");
-    onSummon(parsed);
+    onSummon(parsed.username, parsed.provider);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -128,14 +144,14 @@ export function SplashView({ onSummon }: SplashViewProps) {
         <form onSubmit={handleSubmit} className="w-full space-y-2">
           <div className="flex flex-col">
             <label className="font-mono text-[9px] font-bold text-[#1a1a1a] uppercase tracking-wider mb-1">
-              ENTER GITHUB USERNAME:
+              ENTER GIT USERNAME:
             </label>
             <input
               ref={inputRef}
               type="text"
               value={username}
               onChange={handleInputChange}
-              placeholder="github_username"
+              placeholder="git_username"
               className="retro-input w-full p-2 text-xs font-mono select-all uppercase placeholder-gray-400"
               autoComplete="off"
               spellCheck="false"
@@ -156,7 +172,7 @@ export function SplashView({ onSummon }: SplashViewProps) {
         </form>
 
         <p className="font-mono text-[7px] text-gray-400 uppercase text-center leading-tight">
-          Accepts GitHub URLs, @mentions, or plain usernames
+          Accepts GitHub/GitLab URLs, @mentions, or plain usernames
         </p>
       </div>
 

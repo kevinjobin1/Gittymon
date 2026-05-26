@@ -2,7 +2,10 @@ import { loadLeaderboard, recordMatchResult } from './leaderboard';
 import { lookupSummonCache, addToSummonCache } from './summonCache';
 import { generateSvgCard, generateGifCard } from './embed';
 import { GameServer } from './multiplayer';
-import { Env, RoastMon, GithubData, GroqResponse, AiBossCommentRequest, BadgeResponse } from './types';
+import { Env, RoastMon, GroqResponse, AiBossCommentRequest, BadgeResponse } from './types';
+import type { GitProvider } from '../shared/types';
+import type { ProviderProfileData, IProfileProvider } from './providers';
+import { getProvider, detectProvider, parseProviderInput } from './providers';
 import { SHELL_HTML } from './shellHtml';
 
 export { GameServer };
@@ -19,30 +22,30 @@ function corsHeaders(origin: string) {
   };
 }
 
-function generateMockRoastMon(githubData: GithubData, username: string): RoastMon {
-  const codeHash = username.length + githubData.public_repos;
-  const hp = Math.max(25, Math.min(99, 30 + (githubData.followers * 3) % 70));
-  const attack = Math.max(25, Math.min(99, 40 + (githubData.public_repos * 2) % 60));
-  const defense = Math.max(25, Math.min(99, 50 + (parseInt(githubData.joinedYear) % 10) * 5));
+function generateMockRoastMon(profileData: ProviderProfileData, username: string): RoastMon {
+  const codeHash = username.length + profileData.publicRepos;
+  const hp = Math.max(25, Math.min(99, 30 + (profileData.followers * 3) % 70));
+  const attack = Math.max(25, Math.min(99, 40 + (profileData.publicRepos * 2) % 60));
+  const defense = Math.max(25, Math.min(99, 50 + (parseInt(profileData.joinedYear) % 10) * 5));
   const speed = Math.max(25, Math.min(99, 45 + (username.charCodeAt(0) % 50)));
-  const chaos = Math.max(25, Math.min(99, 10 + (githubData.public_repos * 5) % 90));
+  const chaos = Math.max(25, Math.min(99, 10 + (profileData.publicRepos * 5) % 90));
   const names = ['NodeSlime','Forkachu','AsyncPod','CommitoBat','Dockergon','GitSlasher','JSON_Golem','BugMander'];
   const name = names[codeHash % names.length];
   const types = ['Direct-to-master','AnyScript-Type','StackOverflow Cloner','Merge-Fearful','Coffee-Fueled','Infinite-Loop'];
   const type = types[username.charCodeAt(0) % types.length];
   const roasts = [
-    `Has ${githubData.public_repos} archives but only uses Git Push --Force. Afraid of real code review.`,
+    `Has ${profileData.publicRepos} archives but only uses Git Push --Force. Afraid of real code review.`,
     `Bio is literally blank. Stalks StackOverflow daily hoping nobody notices they copying code.`,
-    `Has followers: ${githubData.followers}. Most of them are bot accounts. Coding style is pure legacy.`,
-    `Joined in ${githubData.joinedYear}. Still types 'sudo' on every line of terminal because of trust issues.`
+    `Has followers: ${profileData.followers}. Most of them are bot accounts. Coding style is pure legacy.`,
+    `Joined in ${profileData.joinedYear}. Still types 'sudo' on every line of terminal because of trust issues.`
   ];
   const roast = roasts[codeHash % roasts.length];
   return {
-    username, name,
-    avatarUrl: githubData.avatar_url,
+    username, provider: profileData.provider, name,
+    avatarUrl: profileData.avatarUrl,
     type,
-    level: Math.max(1, Math.min(99, Math.floor(githubData.public_repos * 1.5 + githubData.followers))),
-    bio: githubData.bio, roast,
+    level: Math.max(1, Math.min(99, Math.floor(profileData.publicRepos * 1.5 + profileData.followers))),
+    bio: profileData.bio, roast,
     stats: { hp, attack, defense, speed, chaos },
     moves: [
       { name: 'Git Commit Force', power: 75, desc: 'Bypasses CI pipelines like a wild cowboy.' },
@@ -50,11 +53,11 @@ function generateMockRoastMon(githubData: GithubData, username: string): RoastMo
       { name: 'StackOverflow Clone', power: 45, desc: 'Instantly copies code without understanding how it works.' },
       { name: 'Cry in Terminal', power: 20, desc: 'Reduces opponent defense from sheer pity.' },
     ],
-    joinedYear: githubData.joinedYear,
-    publicRepos: githubData.public_repos,
-    followers: githubData.followers,
-    location: githubData.location,
-    spriteSeed: `${username}-${githubData.joinedYear}-${githubData.public_repos}`,
+    joinedYear: profileData.joinedYear,
+    publicRepos: profileData.publicRepos,
+    followers: profileData.followers,
+    location: profileData.location,
+    spriteSeed: `${username}-${profileData.joinedYear}-${profileData.publicRepos}`,
   };
 }
 
@@ -140,11 +143,14 @@ async function handleApiRoute(request: Request, env: Env, ctx: ExecutionContext,
     return handleAiBossComment(request, env);
   }
 
+  // Helper to read provider from query params
+  const providerParam = url.searchParams.get('provider') as GitProvider | undefined;
+
   // GET /api/embed/svg/:username
   const svgMatch = path.match(/^\/api\/embed\/svg\/([^/]+)$/);
   if (svgMatch) {
     const palette = url.searchParams.get('palette') || undefined;
-    const svg = await generateSvgCard(svgMatch[1], env, palette);
+    const svg = await generateSvgCard(svgMatch[1], env, palette, providerParam);
     return new Response(svg, {
       headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'max-age=60, s-maxage=120' },
     });
@@ -154,7 +160,7 @@ async function handleApiRoute(request: Request, env: Env, ctx: ExecutionContext,
   const svgAltMatch = path.match(/^\/api\/embed\/([^/]+)\.svg$/);
   if (svgAltMatch) {
     const palette = url.searchParams.get('palette') || undefined;
-    const svg = await generateSvgCard(svgAltMatch[1], env, palette);
+    const svg = await generateSvgCard(svgAltMatch[1], env, palette, providerParam);
     return new Response(svg, {
       headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'max-age=60, s-maxage=120' },
     });
@@ -164,7 +170,7 @@ async function handleApiRoute(request: Request, env: Env, ctx: ExecutionContext,
   const gifMatch = path.match(/^\/api\/embed\/gif\/([^/]+)$/);
   if (gifMatch) {
     const palette = url.searchParams.get('palette') || undefined;
-    const gif = await generateGifCard(gifMatch[1], env, palette);
+    const gif = await generateGifCard(gifMatch[1], env, palette, providerParam);
     return new Response(gif, {
       headers: { 'Content-Type': 'image/gif', 'Cache-Control': 'max-age=60, s-maxage=120' },
     });
@@ -174,7 +180,7 @@ async function handleApiRoute(request: Request, env: Env, ctx: ExecutionContext,
   const gifAltMatch = path.match(/^\/api\/embed\/([^/]+)\.gif$/);
   if (gifAltMatch) {
     const palette = url.searchParams.get('palette') || undefined;
-    const gif = await generateGifCard(gifAltMatch[1], env, palette);
+    const gif = await generateGifCard(gifAltMatch[1], env, palette, providerParam);
     return new Response(gif, {
       headers: { 'Content-Type': 'image/gif', 'Cache-Control': 'max-age=60, s-maxage=120' },
     });
@@ -183,7 +189,7 @@ async function handleApiRoute(request: Request, env: Env, ctx: ExecutionContext,
   // GET /api/badge/:username
   const badgeMatch = path.match(/^\/api\/badge\/([^/]+)$/);
   if (badgeMatch) {
-    return handleBadge(badgeMatch[1], env);
+    return handleBadge(badgeMatch[1], env, url);
   }
 
   return new Response('Not Found', { status: 404 });
@@ -192,74 +198,83 @@ async function handleApiRoute(request: Request, env: Env, ctx: ExecutionContext,
 // ======== Summon Handler ========
 async function handleSummon(request: Request, env: Env): Promise<Response> {
   const body = await request.json() as Record<string, unknown>;
-  const { username } = body;
+  const { username, provider: providerParam } = body;
 
   if (!username || typeof username !== 'string' || !username.trim()) {
-    return new Response(JSON.stringify({ error: 'GitHub username is required.' }), {
+    return new Response(JSON.stringify({ error: 'Git username is required.' }), {
       status: 400, headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  const cleanUsername = username.trim().replace(/[^a-zA-Z0-9-]/g, '');
+  // Auto-detect or use explicit provider
+  let providerInst: IProfileProvider;
+  let cleanUsername: string;
+
+  if (providerParam === 'gitlab') {
+    providerInst = getProvider('gitlab');
+    cleanUsername = providerInst.sanitizeUsername(username);
+  } else if (providerParam === 'github' || !providerParam) {
+    providerInst = getProvider('github');
+    cleanUsername = providerInst.sanitizeUsername(username);
+  } else {
+    // Auto-detect from input
+    const parsed = parseProviderInput(username);
+    if (!parsed) {
+      return new Response(JSON.stringify({ error: 'Invalid git username or URL.' }), {
+        status: 400, headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    providerInst = parsed.provider;
+    cleanUsername = parsed.username;
+  }
+
+  if (!cleanUsername) {
+    return new Response(JSON.stringify({ error: 'Invalid git username.' }), {
+      status: 400, headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   const isRefresh = body.refresh === true;
 
   // Check cache
   if (!isRefresh) {
-    const cached = await lookupSummonCache(env.SUMMON_CACHE, cleanUsername);
+    const cached = await lookupSummonCache(env.SUMMON_CACHE, providerInst.provider, cleanUsername);
     if (cached) return new Response(JSON.stringify(cached), { headers: { 'Content-Type': 'application/json' } });
   }
 
-  let githubData: GithubData = {
-    name: cleanUsername, public_repos: 12, followers: 4,
-    location: 'Internet Wilderness', joinedYear: '2022',
-    bio: 'A mysterious code crafter.',
-    avatar_url: `https://github.com/${cleanUsername}.png`
-  };
+  // Fetch profile via provider
+  const apiKey = providerInst.provider === 'gitlab' ? env.GITLAB_API_KEY : undefined;
+  const profileData = await providerInst.fetchProfile(cleanUsername, apiKey);
 
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1800);
-    const ghResponse = await fetch(`https://api.github.com/users/${cleanUsername}`, {
-      headers: { 'User-Agent': 'RoastMonGameboyApplet' },
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-
-    if (ghResponse.ok) {
-      const data = await ghResponse.json() as Record<string, unknown>;
-      githubData = {
-        name: (data.name as string) || cleanUsername,
-        public_repos: (data.public_repos as number) ?? 10,
-        followers: (data.followers as number) ?? 2,
-        location: (data.location as string) || 'Unknown Coordinates',
-        joinedYear: data.created_at ? new Date(data.created_at as string).getFullYear().toString() : '2021',
-        bio: (data.bio as string) || 'Code without comments, coffee without milk.',
-        avatar_url: (data.avatar_url as string) || `https://github.com/${cleanUsername}.png`,
-      };
+  // Helper to attach fallback warning to the response
+  const attachFallback = (mon: RoastMon): RoastMon => {
+    if (profileData.fromFallback || profileData.warning) {
+      mon._fallback = true;
+      mon._fallbackMessage = profileData.warning || 'Profile data unavailable, used estimated stats.';
     }
-  } catch (err) {
-    console.warn('GitHub API error, using fallback:', err);
-  }
+    return mon;
+  };
 
   // Try Groq AI
   const groqApiKey = env.GROQ_API_KEY;
   if (groqApiKey) {
     try {
-      const resultMon = await callGroqSummon(groqApiKey, cleanUsername, githubData);
-      await addToSummonCache(env.SUMMON_CACHE, cleanUsername, resultMon);
-      return new Response(JSON.stringify(resultMon), { headers: { 'Content-Type': 'application/json' } });
+      const resultMon = await callGroqSummon(groqApiKey, cleanUsername, profileData);
+      await addToSummonCache(env.SUMMON_CACHE, providerInst.provider, cleanUsername, resultMon);
+      return new Response(JSON.stringify(attachFallback(resultMon)), { headers: { 'Content-Type': 'application/json' } });
     } catch (err) {
       console.error('Groq error:', err);
     }
   }
 
   // Fallback: generate mock
-  const mockState = generateMockRoastMon(githubData, cleanUsername);
-  await addToSummonCache(env.SUMMON_CACHE, cleanUsername, mockState);
-  return new Response(JSON.stringify(mockState), { headers: { 'Content-Type': 'application/json' } });
+  const mockState = generateMockRoastMon(profileData, cleanUsername);
+  await addToSummonCache(env.SUMMON_CACHE, providerInst.provider, cleanUsername, mockState);
+  return new Response(JSON.stringify(attachFallback(mockState)), { headers: { 'Content-Type': 'application/json' } });
 }
 
-async function callGroqSummon(apiKey: string, cleanUsername: string, githubData: GithubData): Promise<RoastMon> {
+async function callGroqSummon(apiKey: string, cleanUsername: string, profileData: ProviderProfileData): Promise<RoastMon> {
+  const providerName = profileData.provider === 'gitlab' ? 'GitLab' : 'GitHub';
   const systemPrompt = `You are an elite, sarcastic, witty retro RPG narrator for "ROAST-MON" (inspired by Pokemon, 8-bit games, and funny coding critiques).
 
 You must respond with valid JSON matching this exact schema:
@@ -272,14 +287,14 @@ You must respond with valid JSON matching this exact schema:
 }
 Exactly 4 moves. Return ONLY valid JSON, no other text.`;
 
-  const userPrompt = `Analyze this GitHub user's metrics:
+  const userPrompt = `Analyze this developer's profile metrics from ${providerName}:
 - Username: ${cleanUsername}
-- Real Name: ${githubData.name}
-- Bio: "${githubData.bio}"
-- Public Repos: ${githubData.public_repos}
-- Followers: ${githubData.followers}
-- Joined GitHub: ${githubData.joinedYear}
-- Location: ${githubData.location}
+- Real Name: ${profileData.name}
+- Bio: "${profileData.bio}"
+- Public Repos: ${profileData.publicRepos}
+- Followers: ${profileData.followers}
+- Joined ${providerName}: ${profileData.joinedYear}
+- Location: ${profileData.location}
 
 Summon their customized 8-bit "ROAST-MON" creature!
 1. Choose a funny, mock Poke-style monster name fitting for a software engineer (e.g. Commitobat, Monadon, Forkachu, Bugmander, NodeSlime, Dockergon, Asyncopod).
@@ -316,11 +331,12 @@ Summon their customized 8-bit "ROAST-MON" creature!
 
   return {
     username: cleanUsername,
+    provider: profileData.provider,
     name: parsedData.name || `${cleanUsername}mon`,
-    avatarUrl: githubData.avatar_url,
+    avatarUrl: profileData.avatarUrl,
     type: parsedData.type || 'Standard Dev',
-    level: Math.max(1, Math.min(99, Math.floor((githubData.public_repos * 1.5) + (githubData.followers / 2)))),
-    bio: githubData.bio,
+    level: Math.max(1, Math.min(99, Math.floor((profileData.publicRepos * 1.5) + (profileData.followers / 2)))),
+    bio: profileData.bio,
     roast: parsedData.roast || 'Spends too much time polishing buttons and not committing code.',
     stats: {
       hp: parsedData.stats?.hp ?? 50,
@@ -335,11 +351,11 @@ Summon their customized 8-bit "ROAST-MON" creature!
       { name: 'Coffee Refill', power: 25, desc: 'Heals minor syntax errors' },
       { name: 'Bug Deploy', power: 75, desc: 'Unleashes infinite loop onto production' },
     ],
-    joinedYear: githubData.joinedYear,
-    publicRepos: githubData.public_repos,
-    followers: githubData.followers,
-    location: githubData.location,
-    spriteSeed: `${cleanUsername}-${githubData.joinedYear}-${githubData.public_repos}`,
+    joinedYear: profileData.joinedYear,
+    publicRepos: profileData.publicRepos,
+    followers: profileData.followers,
+    location: profileData.location,
+    spriteSeed: `${cleanUsername}-${profileData.joinedYear}-${profileData.publicRepos}`,
   };
 }
 
@@ -376,7 +392,7 @@ async function handleAiBossComment(request: Request, env: Env): Promise<Response
         model: 'llama-3.1-8b-instant',
         messages: [
           { role: 'system', content: `You are CYBER-DRAKE-Y2K, the elite Level 99 AI Arch-Glitch Gym Leader in "ROAST-MON". You speak in retro-RPG uppercase or witty sassy critiques. Output a single hilarious, snappy, extremely biting retro roast (MAX 100 characters!). No Markdown, no styling, no quotes. Just the raw roast text.` },
-          { role: 'user', content: `You are actively battling a developer named ${username} who has summoned their creature ${cleanMonName} (Stats: HP: ${stats?.hp ?? 50}, Attack: ${stats?.attack ?? 50}, Defense: ${stats?.defense ?? 50}). The player just made the turn combat action: "${cleanAction}". Your current boss health is ${bossHPVal}/250 HP. Mock their action, their Roast-mon's weak stats, or their GitHub quality. Be sassy, short, and punchy. MAX 100 characters.` },
+          { role: 'user', content: `You are actively battling a developer named ${username} who has summoned their creature ${cleanMonName} (Stats: HP: ${stats?.hp ?? 50}, Attack: ${stats?.attack ?? 50}, Defense: ${stats?.defense ?? 50}). The player just made the turn combat action: "${cleanAction}". Your current boss health is ${bossHPVal}/250 HP. Mock their action, their Roast-mon's weak stats, or their coding quality. Be sassy, short, and punchy. MAX 100 characters.` },
         ],
         temperature: 0.9,
         max_tokens: 80,
@@ -392,25 +408,39 @@ async function handleAiBossComment(request: Request, env: Env): Promise<Response
 }
 
 // ======== Badge Handler ========
-async function handleBadge(username: string, env: Env): Promise<Response> {
-  const cleanUsername = username.trim().replace(/[^a-zA-Z0-9-]/g, '');
+async function handleBadge(usernameParam: string, env: Env, url?: URL): Promise<Response> {
+  // Get provider from query param or auto-detect
+  const provider = url?.searchParams.get('provider') as GitProvider | null;
+  const providerInst = provider === 'gitlab' ? getProvider('gitlab') : getProvider('github');
+  const cleanUsername = providerInst.sanitizeUsername(usernameParam);
   if (!cleanUsername) return new Response(JSON.stringify({ error: 'Invalid username' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
 
   const leaderboard = await loadLeaderboard(env.LEADERBOARD);
-  const entry = leaderboard.find(e => e.username.toLowerCase() === cleanUsername.toLowerCase());
+  const entry = leaderboard.find(e =>
+    e.username.toLowerCase() === cleanUsername.toLowerCase() &&
+    e.provider === providerInst.provider
+  );
   const level = entry?.level || Math.max(1, Math.min(99, Math.floor(cleanUsername.length * 3 + (cleanUsername.charCodeAt(0) % 20))));
-  const rank = entry ? [...leaderboard].sort((a, b) => (b.wins - b.losses) - (a.wins - a.losses)).findIndex(e => e.username.toLowerCase() === cleanUsername.toLowerCase()) + 1 : null;
+  const rank = entry ? [...leaderboard].sort((a, b) => (b.wins - b.losses) - (a.wins - a.losses)).findIndex(e =>
+    e.username.toLowerCase() === cleanUsername.toLowerCase() && e.provider === providerInst.provider
+  ) + 1 : null;
   let color = '#7f001c';
   if (rank) { if (rank <= 3) color = '#facc15'; else if (rank <= 10) color = '#22c55e'; else if (rank <= 50) color = '#f97316'; }
   const message = rank ? `#${rank} · LV ${level}` : `LV ${level}`;
-  return new Response(JSON.stringify({ schemaVersion: 1, label: 'Gittymon', message, color, namedLogo: 'github', logoColor: '#e2dfde' }), {
+  return new Response(JSON.stringify({
+    schemaVersion: 1, label: 'Gittymon', message, color,
+    namedLogo: providerInst.provider === 'gitlab' ? 'gitlab' : 'github',
+    logoColor: '#e2dfde',
+  }), {
     headers: { 'Content-Type': 'application/json', 'Cache-Control': 'max-age=120, s-maxage=300' },
   });
 }
 
 // ======== Card Page Handler ========
 async function handleCardPage(request: Request, env: Env, username: string, origin: string): Promise<Response> {
-  const cleanUsername = username.trim().replace(/[^a-zA-Z0-9-]/g, '');
+  // Auto-detect provider from username input and sanitize accordingly
+  const providerInst = detectProvider(username);
+  const cleanUsername = providerInst.sanitizeUsername(username);
   if (!cleanUsername) return new Response('Invalid username', { status: 400 });
 
   const leaderboard = await loadLeaderboard(env.LEADERBOARD);

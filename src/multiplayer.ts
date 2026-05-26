@@ -1,10 +1,10 @@
 import { recordMatchResult } from './leaderboard';
 import { Env, PlayerSession, RoomState, RoastMon, WebSocketMessage } from './types';
 
-const RETRO_BOTS = [
-  { username:'Hackerman-9000', name:'CobolSlayer', avatarUrl:'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=150&q=80', type:'Cobol-Legacy', level:52, bio:'Wrote the bios code in the Apollo 11 Lander inside a text editor with no syntax highlighting.', roast:'Still using tabs instead of spaces and compiles directly into binary using magnetic coils.', stats:{hp:100,attack:72,defense:68,speed:50,chaos:85}, moves:[{name:'PunchCard Strike',power:45,desc:'Overwhelms system cache with massive sequence of instructions.'},{name:'Direct Master Push',power:65,desc:'Bypasses Git staging entirely.'},{name:'Buffer Overflow',power:75,desc:'Flares memory leak causing critical damage to core subsystems.'},{name:'Sleep Deprivation',power:30,desc:'Consumes caffeine to repair 30 corrupted system HP.'}], joinedYear:'1979', publicRepos:104, followers:256, location:'Underground Datacenter', spriteSeed:'hacker-9000-apollo' },
-  { username:'Junior-AI-Prompter', name:'TokenSpammer', avatarUrl:'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&w=150&q=80', type:'AI-Copier', level:40, bio:"Prompts AI to write custom microservices in Rust but doesn't know what a compiler is.", roast:'Spends 30 dollars a month on premium helper tools just to build a custom static hello world button.', stats:{hp:80,attack:45,defense:40,speed:85,chaos:90}, moves:[{name:'Spam Prompt',power:50,desc:'Floods the stream with unvalidated AI modules.'},{name:'Refactor Loop',power:30,desc:'Accidentally re-generates an infinite loop.'},{name:'Hallucination Blast',power:70,desc:'Deals erratic visual distortion waves to opponent logic.'},{name:'Paste Overflow',power:40,desc:'Clones a StackOverflow solution to heal 25 HP.'}], joinedYear:'2024', publicRepos:3, followers:1, location:'OpenAI Dev Forum', spriteSeed:'junior-gpt-cloner' },
-  { username:'Y2K-Glitch-Drake', name:'SyntaxReaper', avatarUrl:'https://images.unsplash.com/photo-1544256718-3bcf237f3974?auto=format&fit=crop&w=150&q=80', type:'Glitch-Abomination', level:65, bio:'Formed from 2 billion lines of unmerged JS commits locked inside a cold production bin.', roast:'Lacks documentation, has 47 critical vulnerability security alerts, and uses var instead of let.', stats:{hp:110,attack:85,defense:55,speed:60,chaos:95}, moves:[{name:'Force-Merge Chaos',power:75,desc:'Splices conflicting git branches and causes extreme system trauma.'},{name:'Var Declaration',power:45,desc:'Pollutes global scopes with memory leakage.'},{name:'Spit-Roast Critique',power:55,desc:'Unleashes cyber roasts that tear down opponent defense stat.'},{name:'Hot Fix Patch',power:25,desc:'Installs urgent security build to restore 35 HP.'}], joinedYear:'1999', publicRepos:89, followers:404, location:'Localhost:8080', spriteSeed:'glitchy-y2k-drake' }
+const RETRO_BOTS: RoastMon[] = [
+  { provider:'github', username:'Hackerman-9000', name:'CobolSlayer', avatarUrl:'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=150&q=80', type:'Cobol-Legacy', level:52, bio:'Wrote the bios code in the Apollo 11 Lander inside a text editor with no syntax highlighting.', roast:'Still using tabs instead of spaces and compiles directly into binary using magnetic coils.', stats:{hp:100,attack:72,defense:68,speed:50,chaos:85}, moves:[{name:'PunchCard Strike',power:45,desc:'Overwhelms system cache with massive sequence of instructions.'},{name:'Direct Master Push',power:65,desc:'Bypasses Git staging entirely.'},{name:'Buffer Overflow',power:75,desc:'Flares memory leak causing critical damage to core subsystems.'},{name:'Sleep Deprivation',power:30,desc:'Consumes caffeine to repair 30 corrupted system HP.'}], joinedYear:'1979', publicRepos:104, followers:256, location:'Underground Datacenter', spriteSeed:'hacker-9000-apollo' },
+  { provider:'github', username:'Junior-AI-Prompter', name:'TokenSpammer', avatarUrl:'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&w=150&q=80', type:'AI-Copier', level:40, bio:"Prompts AI to write custom microservices in Rust but doesn't know what a compiler is.", roast:'Spends 30 dollars a month on premium helper tools just to build a custom static hello world button.', stats:{hp:80,attack:45,defense:40,speed:85,chaos:90}, moves:[{name:'Spam Prompt',power:50,desc:'Floods the stream with unvalidated AI modules.'},{name:'Refactor Loop',power:30,desc:'Accidentally re-generates an infinite loop.'},{name:'Hallucination Blast',power:70,desc:'Deals erratic visual distortion waves to opponent logic.'},{name:'Paste Overflow',power:40,desc:'Clones a StackOverflow solution to heal 25 HP.'}], joinedYear:'2024', publicRepos:3, followers:1, location:'OpenAI Dev Forum', spriteSeed:'junior-gpt-cloner' },
+  { provider:'github', username:'Y2K-Glitch-Drake', name:'SyntaxReaper', avatarUrl:'https://images.unsplash.com/photo-1544256718-3bcf237f3974?auto=format&fit=crop&w=150&q=80', type:'Glitch-Abomination', level:65, bio:'Formed from 2 billion lines of unmerged JS commits locked inside a cold production bin.', roast:'Lacks documentation, has 47 critical vulnerability security alerts, and uses var instead of let.', stats:{hp:110,attack:85,defense:55,speed:60,chaos:95}, moves:[{name:'Force-Merge Chaos',power:75,desc:'Splices conflicting git branches and causes extreme system trauma.'},{name:'Var Declaration',power:45,desc:'Pollutes global scopes with memory leakage.'},{name:'Spit-Roast Critique',power:55,desc:'Unleashes cyber roasts that tear down opponent defense stat.'},{name:'Hot Fix Patch',power:25,desc:'Installs urgent security build to restore 35 HP.'}], joinedYear:'1999', publicRepos:89, followers:404, location:'Localhost:8080', spriteSeed:'glitchy-y2k-drake' }
 ];
 
 export class GameServer implements DurableObject {
@@ -292,13 +292,13 @@ export class GameServer implements DurableObject {
 
     if (!room.isAiMatch) {
       recordMatchResult(this.env.LEADERBOARD,
-        { username: p1Winner.username, monName: p1Winner.mon.name, level: p1Winner.mon.level, avatarUrl: p1Winner.mon.avatarUrl },
-        { username: p1Loser.username, monName: p1Loser.mon.name, level: p1Loser.mon.level, avatarUrl: p1Loser.mon.avatarUrl }
+        { username: p1Winner.username, monName: p1Winner.mon.name, level: p1Winner.mon.level, avatarUrl: p1Winner.mon.avatarUrl, provider: p1Winner.mon.provider },
+        { username: p1Loser.username, monName: p1Loser.mon.name, level: p1Loser.mon.level, avatarUrl: p1Loser.mon.avatarUrl, provider: p1Loser.mon.provider }
       );
     } else {
       recordMatchResult(this.env.LEADERBOARD,
-        { username: room.p1.username, monName: room.p1.mon.name, level: room.p1.mon.level, avatarUrl: room.p1.mon.avatarUrl },
-        { username: room.p2.username, monName: room.p2.mon.name, level: room.p2.mon.level, avatarUrl: room.p2.mon.avatarUrl }
+        { username: room.p1.username, monName: room.p1.mon.name, level: room.p1.mon.level, avatarUrl: room.p1.mon.avatarUrl, provider: room.p1.mon.provider },
+        { username: room.p2.username, monName: room.p2.mon.name, level: room.p2.mon.level, avatarUrl: room.p2.mon.avatarUrl, provider: room.p2.mon.provider }
       );
     }
 
@@ -364,13 +364,13 @@ export class GameServer implements DurableObject {
 
     if (!room.isAiMatch) {
       recordMatchResult(this.env.LEADERBOARD,
-        { username: winner.username, monName: winner.mon.name, level: winner.mon.level, avatarUrl: winner.mon.avatarUrl },
-        { username: loser.username, monName: loser.mon.name, level: loser.mon.level, avatarUrl: loser.mon.avatarUrl }
+        { username: winner.username, monName: winner.mon.name, level: winner.mon.level, avatarUrl: winner.mon.avatarUrl, provider: winner.mon.provider },
+        { username: loser.username, monName: loser.mon.name, level: loser.mon.level, avatarUrl: loser.mon.avatarUrl, provider: loser.mon.provider }
       );
     } else {
       recordMatchResult(this.env.LEADERBOARD,
-        { username: room.p1.username, monName: room.p1.mon.name, level: room.p1.mon.level, avatarUrl: room.p1.mon.avatarUrl },
-        { username: room.p2.username, monName: room.p2.mon.name, level: room.p2.mon.level, avatarUrl: room.p2.mon.avatarUrl }
+        { username: room.p1.username, monName: room.p1.mon.name, level: room.p1.mon.level, avatarUrl: room.p1.mon.avatarUrl, provider: room.p1.mon.provider },
+        { username: room.p2.username, monName: room.p2.mon.name, level: room.p2.mon.level, avatarUrl: room.p2.mon.avatarUrl, provider: room.p2.mon.provider }
       );
     }
 

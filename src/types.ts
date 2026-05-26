@@ -14,6 +14,7 @@ export interface Move {
 
 export interface RoastMon {
   username: string;
+  provider: 'github' | 'gitlab';
   name: string;
   avatarUrl: string;
   type: string;
@@ -27,6 +28,10 @@ export interface RoastMon {
   followers: number;
   location: string;
   spriteSeed: string;
+  /** Whether the API profile fetch fell back to defaults; set server-side */
+  _fallback?: boolean;
+  /** Human-readable reason for fallback */
+  _fallbackMessage?: string;
 }
 
 export interface GithubData {
@@ -168,4 +173,5 @@ export interface Env {
   SUMMON_CACHE: KVNamespace;
   GAME_SERVER: DurableObjectNamespace;
   GROQ_API_KEY?: string;
+  GITLAB_API_KEY?: string;
 }

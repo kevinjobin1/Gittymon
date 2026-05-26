@@ -1,4 +1,5 @@
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import fs from 'fs';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
@@ -7,6 +8,8 @@ import dotenv from 'dotenv';
 import { loadLeaderboard } from './server/leaderboard.js';
 import { setupMultiplayer } from './server/multiplayer.js';
 import { generateSvgCard, generateGifCard } from './server/embed.js';
+import { getProvider, detectProvider, parseProviderInput } from './src/providers/index.js';
+import type { ProviderProfileData, IProfileProvider } from './src/providers/types.js';
 
 // Load environment variables from .env
 dotenv.config();
@@ -17,6 +20,23 @@ const escapeHtml = (str: string): string =>
 const app = express();
 app.set('trust proxy', 1);
 const PORT = 3000;
+
+// Rate limiters
+const summonLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many summon requests. Please wait before trying again.' },
+});
+
+const badgeLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many badge requests. Please wait before trying again.' },
+});
 
 app.use(express.json());
 
@@ -35,77 +55,77 @@ if (apiKey) {
 }
 
 /**
- * Endpoint to summon a Roast-mon based on a GitHub username
+ * Endpoint to summon a Roast-mon based on a Git username
  */
-app.post('/api/summon', async (req, res) => {
-  const { username } = req.body;
+app.post('/api/summon', summonLimiter, async (req, res) => {
+  const { username, provider: providerParam } = req.body;
 
   if (!username || typeof username !== 'string' || !username.trim()) {
-    return res.status(400).json({ error: 'GitHub username is required.' });
+    return res.status(400).json({ error: 'Git username is required.' });
   }
 
-  const cleanUsername = username.trim().replace(/[^a-zA-Z0-9-]/g, '');
+  // Auto-detect or use explicit provider
+  let providerInst: IProfileProvider;
+  let cleanUsername: string;
+
+  if (providerParam === 'gitlab') {
+    providerInst = getProvider('gitlab');
+    cleanUsername = providerInst.sanitizeUsername(username);
+  } else if (providerParam === 'github' || !providerParam) {
+    providerInst = getProvider('github');
+    cleanUsername = providerInst.sanitizeUsername(username);
+  } else {
+    // Auto-detect from input
+    const parsed = parseProviderInput(username);
+    if (!parsed) {
+      return res.status(400).json({ error: 'Invalid git username or URL.' });
+    }
+    providerInst = parsed.provider;
+    cleanUsername = parsed.username;
+  }
+
+  if (!cleanUsername) {
+    return res.status(400).json({ error: 'Invalid git username.' });
+  }
 
   // Check summon cache first — skip AI if we already have a result for this user
   const isRefresh = req.body.refresh === true;
   if (!isRefresh) {
     const cache = loadSummonCache();
-    const cached = cache.find(e => e.username.toLowerCase() === cleanUsername.toLowerCase());
+    const cacheKey = `${providerInst.provider}:${cleanUsername}`.toLowerCase();
+    const cached = cache.find(e => {
+      const key = `${providerInst.provider}:${e.username}`.toLowerCase();
+      return key === cacheKey;
+    });
     if (cached) {
-      console.log(`Serving cached summon for ${cleanUsername}`);
+      console.log(`Serving cached summon for ${providerInst.provider}:${cleanUsername}`);
       return res.json(cached.resultMon);
     }
   }
 
-  let githubData = {
-    name: cleanUsername,
-    public_repos: 12,
-    followers: 4,
-    location: 'Internet Wilderness',
-    joinedYear: '2022',
-    bio: 'A mysterious code crafter.',
-    avatar_url: `https://github.com/${cleanUsername}.png`
-  };
+  // Fetch profile via provider
+  const apiKey = providerInst.provider === 'gitlab' ? process.env.GITLAB_API_KEY : undefined;
+  const profileData = await providerInst.fetchProfile(cleanUsername, apiKey);
 
-  try {
-    // Attempt fetching public details of the user from GitHub API
-    // Setting clean headers with a custom User-Agent to satisfy GitHub policies
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1800);
-
-    const ghResponse = await fetch(`https://api.github.com/users/${cleanUsername}`, {
-      headers: { 'User-Agent': 'RoastMonGameboyApplet' },
-      signal: controller.signal
-    });
-
-    clearTimeout(timeoutId);
-
-    if (ghResponse.ok) {
-      const data = await ghResponse.json();
-      githubData = {
-        name: data.name || cleanUsername,
-        public_repos: data.public_repos ?? 10,
-        followers: data.followers ?? 2,
-        location: data.location || 'Unknown Coordinates',
-        joinedYear: data.created_at ? new Date(data.created_at).getFullYear().toString() : '2021',
-        bio: data.bio || 'Code without comments, coffee without milk.',
-        avatar_url: data.avatar_url || `https://github.com/${cleanUsername}.png`
-      };
-    } else {
-      console.warn(`GitHub API returned response status: ${ghResponse.status}. Using fallback default metrics.`);
+  // Helper: attach fallback warning to any response mon
+  const attachFallback = (mon: Record<string, unknown>) => {
+    if (profileData.fromFallback || profileData.warning) {
+      mon._fallback = true;
+      mon._fallbackMessage = profileData.warning || 'Profile data unavailable, used estimated stats.';
     }
-  } catch (err) {
-    console.warn('Could not contact GitHub API due to networking or rate limits. Utilizing fallback metrics gracefully.', err);
-  }
+    return mon;
+  };
 
   // If Groq is not initialized or fails, generate a hilarious local mock so the game remains completely playable
   if (!groq) {
-    const mockState = generateMockRoastMon(githubData, cleanUsername);
-    addToSummonCache(cleanUsername, mockState);
+    const mockState = generateMockRoastMon(profileData, cleanUsername);
+    attachFallback(mockState);
+    addToSummonCache(cleanUsername, mockState, providerInst.provider);
     return res.json(mockState);
   }
 
   try {
+    const providerName = providerInst.provider === 'gitlab' ? 'GitLab' : 'GitHub';
     const systemPrompt = `You are an elite, sarcastic, witty retro RPG narrator for "ROAST-MON" (inspired by Pokemon, 8-bit games, and funny coding critiques).
 
 You must respond with valid JSON matching this exact schema:
@@ -127,14 +147,14 @@ You must respond with valid JSON matching this exact schema:
 
 Exactly 4 moves. Return ONLY valid JSON, no other text.`;
 
-    const userPrompt = `Analyze this GitHub user's metrics:
+    const userPrompt = `Analyze this developer's profile metrics from ${providerName}:
 - Username: ${cleanUsername}
-- Real Name: ${githubData.name}
-- Bio: "${githubData.bio}"
-- Public Repos: ${githubData.public_repos}
-- Followers: ${githubData.followers}
-- Joined GitHub: ${githubData.joinedYear}
-- Location: ${githubData.location}
+- Real Name: ${profileData.name}
+- Bio: "${profileData.bio}"
+- Public Repos: ${profileData.publicRepos}
+- Followers: ${profileData.followers}
+- Joined ${providerName}: ${profileData.joinedYear}
+- Location: ${profileData.location}
 
 Summon their customized 8-bit "ROAST-MON" creature!
 1. Choose a funny, mock Poke-style monster name fitting for a software engineer (e.g. Commitobat, Monadon, Forkachu, Bugmander, NodeSlime, Dockergon, Asyncopod). Reflect their metrics or handle.
@@ -161,11 +181,12 @@ Summon their customized 8-bit "ROAST-MON" creature!
     // Merge everything with original metadata for the application state
     const resultMon = {
       username: cleanUsername,
+      provider: providerInst.provider,
       name: parsedData.name || `${cleanUsername}mon`,
-      avatarUrl: githubData.avatar_url,
+      avatarUrl: profileData.avatarUrl,
       type: parsedData.type || 'Standard Dev',
-      level: Math.max(1, Math.min(99, Math.floor((githubData.public_repos * 1.5) + (githubData.followers / 2)))),
-      bio: githubData.bio,
+      level: Math.max(1, Math.min(99, Math.floor((profileData.publicRepos * 1.5) + (profileData.followers / 2)))),
+      bio: profileData.bio,
       roast: parsedData.roast || 'Spends too much time polishing buttons and not committing code.',
       stats: {
         hp: parsedData.stats?.hp ?? 50,
@@ -180,23 +201,34 @@ Summon their customized 8-bit "ROAST-MON" creature!
         { name: 'Coffee Refill', power: 25, desc: 'Heals minor syntax errors' },
         { name: 'Bug Deploy', power: 75, desc: 'Unleashes infinite loop onto production' }
       ],
-      joinedYear: githubData.joinedYear,
-      publicRepos: githubData.public_repos,
-      followers: githubData.followers,
-      location: githubData.location,
-      spriteSeed: `${cleanUsername}-${githubData.joinedYear}-${githubData.public_repos}`
+      joinedYear: profileData.joinedYear,
+      publicRepos: profileData.publicRepos,
+      followers: profileData.followers,
+      location: profileData.location,
+      spriteSeed: `${cleanUsername}-${profileData.joinedYear}-${profileData.publicRepos}`
     };
 
-    addToSummonCache(cleanUsername, resultMon);
+    attachFallback(resultMon);
+    addToSummonCache(cleanUsername, resultMon, providerInst.provider);
     res.json(resultMon);
 
   } catch (error) {
     console.error('Groq summon error. Utilizing local dithered model fallback gracefully:', error);
-    const fallbackMon = generateMockRoastMon(githubData, cleanUsername);
-    addToSummonCache(cleanUsername, fallbackMon);
+    const fallbackMon = generateMockRoastMon(profileData, cleanUsername);
+    attachFallback(fallbackMon);
+    addToSummonCache(cleanUsername, fallbackMon, providerInst.provider);
     res.json(fallbackMon);
   }
 });
+
+/**
+ * Helper to read provider query param
+ */
+function getProviderParam(req: express.Request): string | undefined {
+  const p = req.query.provider;
+  if (p === 'gitlab' || p === 'github') return p as string;
+  return undefined;
+}
 
 /**
  * Dynamic SVG Card Embed Generator API Endpoint
@@ -208,7 +240,8 @@ app.get('/api/embed/svg/:username', (req, res) => {
     return res.status(400).send('Username parameter required');
   }
   const palette = typeof req.query.palette === 'string' ? req.query.palette : undefined;
-  const svg = generateSvgCard(username, palette);
+  const provider = getProviderParam(req);
+  const svg = generateSvgCard(username, palette, provider);
   res.setHeader('Content-Type', 'image/svg+xml');
   res.setHeader('Cache-Control', 'max-age=60, s-maxage=120, stale-while-revalidate=600');
   return res.send(svg);
@@ -221,7 +254,8 @@ app.get('/api/embed/:username.svg', (req, res) => {
     return res.status(400).send('Username parameter required');
   }
   const palette = typeof req.query.palette === 'string' ? req.query.palette : undefined;
-  const svg = generateSvgCard(username, palette);
+  const provider = getProviderParam(req);
+  const svg = generateSvgCard(username, palette, provider);
   res.setHeader('Content-Type', 'image/svg+xml');
   res.setHeader('Cache-Control', 'max-age=60, s-maxage=120, stale-while-revalidate=600');
   return res.send(svg);
@@ -238,7 +272,8 @@ app.get('/api/embed/gif/:username', (req, res) => {
   }
   try {
     const palette = typeof req.query.palette === 'string' ? req.query.palette : undefined;
-    const gifBuffer = generateGifCard(username, palette);
+    const provider = getProviderParam(req);
+    const gifBuffer = generateGifCard(username, palette, provider);
     res.setHeader('Content-Type', 'image/gif');
     res.setHeader('Cache-Control', 'max-age=60, s-maxage=120, stale-while-revalidate=600');
     return res.send(gifBuffer);
@@ -256,7 +291,8 @@ app.get('/api/embed/:username.gif', (req, res) => {
   }
   try {
     const palette = typeof req.query.palette === 'string' ? req.query.palette : undefined;
-    const gifBuffer = generateGifCard(username, palette);
+    const provider = getProviderParam(req);
+    const gifBuffer = generateGifCard(username, palette, provider);
     res.setHeader('Content-Type', 'image/gif');
     res.setHeader('Cache-Control', 'max-age=60, s-maxage=120, stale-while-revalidate=600');
     return res.send(gifBuffer);
@@ -270,22 +306,30 @@ app.get('/api/embed/:username.gif', (req, res) => {
  * Shields.io dynamic badge endpoint.
  * Returns JSON in shields.io endpoint format for live badge rendering.
  */
-app.get('/api/badge/:username', (req, res) => {
+app.get('/api/badge/:username', badgeLimiter, (req, res) => {
   const { username } = req.params;
   if (!username) return res.status(400).json({ error: 'Username parameter required' });
 
-  const cleanUsername = username.trim().replace(/[^a-zA-Z0-9-]/g, '');
+  const provider = getProviderParam(req);
+  const providerInst = provider === 'gitlab' ? getProvider('gitlab') : getProvider('github');
+  const cleanUsername = providerInst.sanitizeUsername(username);
   if (!cleanUsername) return res.status(400).json({ error: 'Invalid username' });
 
   const leaderboard = loadLeaderboard();
-  const entry = leaderboard.find(e => e.username.toLowerCase() === cleanUsername.toLowerCase());
+  const entry = leaderboard.find(e =>
+    e.username.toLowerCase() === cleanUsername.toLowerCase() &&
+    e.provider === providerInst.provider
+  );
 
   // Deterministic level (same as embed.ts) — use leaderboard if available
   const level = entry?.level || Math.max(1, Math.min(99, Math.floor(cleanUsername.length * 3 + (cleanUsername.charCodeAt(0) % 20))));
 
   // Rank on leaderboard (1-indexed)
   const rank = entry
-    ? [...leaderboard].sort((a, b) => (b.wins - b.losses) - (a.wins - a.losses)).findIndex(e => e.username.toLowerCase() === cleanUsername.toLowerCase()) + 1
+    ? [...leaderboard].sort((a, b) => (b.wins - b.losses) - (a.wins - a.losses)).findIndex(e =>
+        e.username.toLowerCase() === cleanUsername.toLowerCase() &&
+        e.provider === providerInst.provider
+      ) + 1
     : null;
 
   // Color scheme based on rank
@@ -305,7 +349,7 @@ app.get('/api/badge/:username', (req, res) => {
     label: 'Gittymon',
     message,
     color,
-    namedLogo: 'github',
+    namedLogo: providerInst.provider === 'gitlab' ? 'gitlab' : 'github',
     logoColor: '#e2dfde',
   });
 });
@@ -318,11 +362,15 @@ app.get('/card/:username', (req, res) => {
   const { username } = req.params;
   if (!username) return res.status(400).send('Username parameter required');
 
-  const cleanUsername = username.trim().replace(/[^a-zA-Z0-9-]/g, '');
+  const providerInst = detectProvider(username);
+  const cleanUsername = providerInst.sanitizeUsername(username);
   if (!cleanUsername) return res.status(400).send('Invalid username');
 
   const leaderboard = loadLeaderboard();
-  const entry = leaderboard.find(e => e.username.toLowerCase() === cleanUsername.toLowerCase());
+  const entry = leaderboard.find(e =>
+    e.username.toLowerCase() === cleanUsername.toLowerCase() &&
+    e.provider === providerInst.provider
+  );
 
   // Deterministic card data (matches server/embed.ts generation)
   const codeHash = cleanUsername.length + (cleanUsername.length * 2);
@@ -341,8 +389,9 @@ app.get('/card/:username', (req, res) => {
   const wins = entry?.wins ?? 0;
   const losses = entry?.losses ?? 0;
 
+  const providerQuery = providerInst.provider === 'gitlab' ? '?provider=gitlab' : '';
   const origin = `${req.protocol}://${req.get('host')}`;
-  const gifUrl = `${origin}/api/embed/${cleanUsername}.gif`;
+  const gifUrl = `${origin}/api/embed/${cleanUsername}.gif${providerQuery}`;
   const cardUrl = `${origin}/card/${cleanUsername}`;
   const socialPreviewUrl = `${origin}/social-preview.png`;
   const title = `${monName.toUpperCase()} LV ${level}`;
@@ -625,10 +674,14 @@ function saveSummonCache(cache: SummonCacheEntry[]): void {
   }
 }
 
-function addToSummonCache(username: string, resultMon: any): void {
+function addToSummonCache(username: string, resultMon: any, provider?: string): void {
   const cache = loadSummonCache();
-  // Remove existing entry if present (e.g. on refresh)
-  const existingIdx = cache.findIndex(e => e.username.toLowerCase() === username.toLowerCase());
+  // Use composite key for provider-aware matching
+  const cacheKey = provider ? `${provider}:${username}`.toLowerCase() : username.toLowerCase();
+  const existingIdx = cache.findIndex(e => {
+    const key = provider ? `${provider}:${e.username}`.toLowerCase() : e.username.toLowerCase();
+    return key === cacheKey;
+  });
   if (existingIdx !== -1) cache.splice(existingIdx, 1);
   // Keep cache size manageable
   if (cache.length >= 500) cache.shift();
@@ -643,13 +696,13 @@ function addToSummonCache(username: string, resultMon: any): void {
 /**
  * Generates an extremely fun mock Roast-Mon in case Groq API key is missing or is exhausted
  */
-function generateMockRoastMon(githubData: any, username: string) {
-  const codeHash = username.length + githubData.public_repos;
-  const hp = Math.max(25, Math.min(99, 30 + (githubData.followers * 3) % 70));
-  const attack = Math.max(25, Math.min(99, 40 + (githubData.public_repos * 2) % 60));
-  const defense = Math.max(25, Math.min(99, 50 + (parseInt(githubData.joinedYear) % 10) * 5));
+function generateMockRoastMon(profileData: ProviderProfileData, username: string) {
+  const codeHash = username.length + profileData.publicRepos;
+  const hp = Math.max(25, Math.min(99, 30 + (profileData.followers * 3) % 70));
+  const attack = Math.max(25, Math.min(99, 40 + (profileData.publicRepos * 2) % 60));
+  const defense = Math.max(25, Math.min(99, 50 + (parseInt(profileData.joinedYear) % 10) * 5));
   const speed = Math.max(25, Math.min(99, 45 + (username.charCodeAt(0) % 50)));
-  const chaos = Math.max(25, Math.min(99, 10 + (githubData.public_repos * 5) % 90));
+  const chaos = Math.max(25, Math.min(99, 10 + (profileData.publicRepos * 5) % 90));
 
   const names = ['NodeSlime', 'Forkachu', 'AsyncPod', 'CommitoBat', 'Dockergon', 'GitSlasher', 'JSON_Golem', 'BugMander'];
   const name = names[codeHash % names.length];
@@ -658,20 +711,21 @@ function generateMockRoastMon(githubData: any, username: string) {
   const type = types[username.charCodeAt(0) % types.length];
 
   const roasts = [
-    `Has ${githubData.public_repos} archives but only uses Git Push --Force. Afraid of real code review.`,
+    `Has ${profileData.publicRepos} archives but only uses Git Push --Force. Afraid of real code review.`,
     `Bio is literally blank. Stalks StackOverflow daily hoping nobody notices they copying code.`,
-    `Has followers: ${githubData.followers}. Most of them are bot accounts. Coding style is pure legacy.`,
-    `Joined in ${githubData.joinedYear}. Still types 'sudo' on every line of terminal because of trust issues.`
+    `Has followers: ${profileData.followers}. Most of them are bot accounts. Coding style is pure legacy.`,
+    `Joined in ${profileData.joinedYear}. Still types 'sudo' on every line of terminal because of trust issues.`
   ];
   const roast = roasts[codeHash % roasts.length];
 
   return {
     username,
+    provider: profileData.provider,
     name,
-    avatarUrl: githubData.avatar_url,
+    avatarUrl: profileData.avatarUrl,
     type,
-    level: Math.max(1, Math.min(99, Math.floor(githubData.public_repos * 1.5 + githubData.followers))),
-    bio: githubData.bio,
+    level: Math.max(1, Math.min(99, Math.floor(profileData.publicRepos * 1.5 + profileData.followers))),
+    bio: profileData.bio,
     roast,
     stats: { hp, attack, defense, speed, chaos },
     moves: [
@@ -680,11 +734,11 @@ function generateMockRoastMon(githubData: any, username: string) {
       { name: 'StackOverflow Clone', power: 45, desc: 'Instantly copies code without understanding how it works.' },
       { name: 'Cry in Terminal', power: 20, desc: 'Reduces opponent defense from sheer pity.' }
     ],
-    joinedYear: githubData.joinedYear,
-    publicRepos: githubData.public_repos,
-    followers: githubData.followers,
-    location: githubData.location,
-    spriteSeed: `${username}-${githubData.joinedYear}-${githubData.public_repos}`
+    joinedYear: profileData.joinedYear,
+    publicRepos: profileData.publicRepos,
+    followers: profileData.followers,
+    location: profileData.location,
+    spriteSeed: `${username}-${profileData.joinedYear}-${profileData.publicRepos}`
   };
 }
 
@@ -763,4 +817,9 @@ async function startServer() {
 
 }
 
-startServer();
+if (!process.env.VITEST) {
+  startServer();
+}
+
+export { app };
+

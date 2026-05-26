@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { LeaderboardEntry } from '../types';
+import type { GitProvider } from '../../shared/types';
 import { playRetroSound } from '../utils/audio';
 import { LeaderboardSkeleton } from './LoadingSkeletons';
+import { ProviderIcon } from './ProviderIcon';
 
 const ENTRIES_PER_PAGE = 20;
 const VISIBLE_SLICE = 4; // Rows visible on screen at once
@@ -23,9 +25,14 @@ export function LeaderboardView({
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [scrollIndex, setScrollIndex] = useState(0);
+  const [providerFilter, setProviderFilter] = useState<'all' | 'github' | 'gitlab'>('all');
 
-  const totalPages = Math.max(1, Math.ceil(entries.length / ENTRIES_PER_PAGE));
-  const pageEntries = entries.slice(page * ENTRIES_PER_PAGE, (page + 1) * ENTRIES_PER_PAGE);
+  const filteredEntries = entries.filter((e) =>
+    providerFilter === 'all' ? true : e.provider === providerFilter,
+  );
+
+  const totalPages = Math.max(1, Math.ceil(filteredEntries.length / ENTRIES_PER_PAGE));
+  const pageEntries = filteredEntries.slice(page * ENTRIES_PER_PAGE, (page + 1) * ENTRIES_PER_PAGE);
   const maxScroll = Math.max(0, pageEntries.length - VISIBLE_SLICE);
   const visibleEntries = pageEntries.slice(scrollIndex, scrollIndex + VISIBLE_SLICE);
 
@@ -46,6 +53,12 @@ export function LeaderboardView({
     };
     fetchLeaderboard();
   }, []);
+
+  // Reset page/scroll when filter changes
+  useEffect(() => {
+    setPage(0);
+    setScrollIndex(0);
+  }, [providerFilter]);
 
   useEffect(() => {
     const handleDirection = (dir: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT') => {
@@ -86,22 +99,52 @@ export function LeaderboardView({
       registerAHandler(null);
       registerBHandler(null);
     };
-  }, [entries.length, page, totalPages, maxScroll, pageEntries.length, onBack]);
+  }, [filteredEntries.length, page, totalPages, maxScroll, pageEntries.length, onBack]);
 
   return (
     <div className="flex-1 flex flex-col justify-between p-1 px-1.5 text-[#1a1a1a] select-none font-mono">
       {/* Visual Header */}
-      <div className="flex justify-between items-center border-b-2 border-[#1a1a1a] pb-1 font-bold text-[9px]">
-        <span>HALL OF CODES</span>
-        <span className="text-[#7f001c]">TOP {entries.length} SUMMONS</span>
+      <div className="flex flex-col border-b-2 border-[#1a1a1a] pb-1 gap-0.5">
+        <div className="flex justify-between items-center font-bold text-[9px]">
+          <span>HALL OF CODES</span>
+          <span className="text-[#7f001c]">TOP {filteredEntries.length} SUMMONS</span>
+        </div>
+        {/* Provider Filter */}
+        <div className="flex gap-1 text-[7px]">
+          {(['all', 'github', 'gitlab'] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => {
+                playRetroSound('select');
+                setProviderFilter(f);
+              }}
+              className={`flex items-center gap-1 px-1.5 py-0.5 rounded font-bold uppercase tracking-wide transition-all
+                ${providerFilter === f
+                  ? 'bg-[#1a1a1a] text-white shadow-[1px_1px_0px_rgba(0,0,0,0.3)]'
+                  : 'bg-neutral-100 text-gray-500 border border-neutral-300 hover:bg-neutral-200'
+                }`}
+            >
+              {f === 'all' ? (
+                'ALL'
+              ) : (
+                <>
+                  <ProviderIcon provider={f} size={7} className="-mt-0.5" />
+                  {f.toUpperCase()}
+                </>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="flex-1 flex flex-col justify-center py-1">
         {loading ? (
           <LeaderboardSkeleton rows={4} />
-        ) : entries.length === 0 ? (
+        ) : filteredEntries.length === 0 ? (
           <div className="text-center py-4 text-[9px] text-gray-500">
-            NO HIGH SCORES RECORDED. BE THE FIRST!
+            {entries.length === 0
+              ? 'NO HIGH SCORES RECORDED. BE THE FIRST!'
+              : `NO ${providerFilter.toUpperCase()} SUMMONS FOUND`}
           </div>
         ) : (
           <div className="space-y-1.5 flex-1 flex flex-col justify-start pt-1">
@@ -132,8 +175,10 @@ export function LeaderboardView({
                   />
                   <div className="flex-1 min-w-0 font-mono">
                     <div className="flex justify-between items-baseline">
-                      <span className="truncate font-bold text-gray-800 text-[8.5px]">
-                        #{actualIdx + 1} {entity.username.toUpperCase().slice(0, 10)}
+                      <span className="truncate font-bold text-gray-800 text-[8.5px] flex items-center gap-1">
+                        #{actualIdx + 1}
+                        <ProviderIcon provider={entity.provider ?? 'github'} size={9} className="-mt-0.5" />
+                        {entity.username.toUpperCase().slice(0, 10)}
                       </span>
                       <span className={`shrink-0 ${rankColor} text-[8px]`}>
                         {entity.wins}W - {entity.losses}L

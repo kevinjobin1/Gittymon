@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { RoastMon } from '../types';
+import type { GitProvider } from '../../shared/types';
 import { drawProceduralMon, drawDitheredAvatar, PALETTE_NAMES } from '../utils/procGen';
 import type { PaletteName } from '../utils/procGen';
 import { playRetroSound } from '../utils/audio';
+import { ProviderIcon } from './ProviderIcon';
 
 interface MonDetailsViewProps {
   mon: RoastMon;
@@ -101,7 +103,10 @@ export function MonDetailsView({ mon, onBattle, onBack }: MonDetailsViewProps) {
           </div>
           <div className="flex flex-col">
             <span className="text-gray-500 text-[8px] uppercase font-bold leading-none">BORN IN:</span>
-            <span className="font-bold">{mon.joinedYear} @ {mon.location.split(',')[0].slice(0, 10)}</span>
+            <span className="font-bold flex items-center gap-1">
+              <ProviderIcon provider={mon.provider ?? 'github'} size={10} />
+              {mon.joinedYear} @ {mon.location.split(',')[0].slice(0, 10)}
+            </span>
           </div>
         </div>
       </div>
