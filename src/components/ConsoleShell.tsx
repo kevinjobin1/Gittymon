@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { playRetroSound } from '../utils/audio';
+import { useControls } from '../lib/useControls';
 import { BackgroundMap } from './BackgroundMap';
-import { DPad } from './DPad';
 import { ScreenFrame } from './ScreenFrame';
-import { ABButtons } from './ABButtons';
-import { StartSelectButtons } from './StartSelectButtons';
+import { DPadCluster, ABDiagonalCluster, StartSelectCluster } from './FloatingControls';
 
 interface ConsoleShellProps {
   children: React.ReactNode;
@@ -43,26 +42,6 @@ export function ConsoleShell({
   const [showEscToast, setShowEscToast] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const hasEverExpandedRef = useRef(false);
-
-  const [pressedKeys, setPressedKeys] = useState<{
-    A: boolean;
-    B: boolean;
-    START: boolean;
-    SELECT: boolean;
-    UP: boolean;
-    DOWN: boolean;
-    LEFT: boolean;
-    RIGHT: boolean;
-  }>({
-    A: false,
-    B: false,
-    START: false,
-    SELECT: false,
-    UP: false,
-    DOWN: false,
-    LEFT: false,
-    RIGHT: false
-  });
 
   useEffect(() => {
     const soundTimeout = setTimeout(() => {
@@ -146,73 +125,14 @@ export function ConsoleShell({
     setDustParticles(particles);
   }, []);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
-        e.preventDefault();
-      }
-      switch (e.key.toLowerCase()) {
-        case 'arrowup':
-          setPressedKeys((k) => ({ ...k, UP: true }));
-          onPressDirection?.('UP');
-          break;
-        case 'arrowdown':
-          setPressedKeys((k) => ({ ...k, DOWN: true }));
-          onPressDirection?.('DOWN');
-          break;
-        case 'arrowleft':
-          setPressedKeys((k) => ({ ...k, LEFT: true }));
-          onPressDirection?.('LEFT');
-          break;
-        case 'arrowright':
-          setPressedKeys((k) => ({ ...k, RIGHT: true }));
-          onPressDirection?.('RIGHT');
-          break;
-        case 'z':
-        case 'a':
-          setPressedKeys((k) => ({ ...k, A: true }));
-          onPressA?.();
-          break;
-        case 'x':
-        case 'b':
-          setPressedKeys((k) => ({ ...k, B: true }));
-          onPressB?.();
-          break;
-        case 'enter':
-          setPressedKeys((k) => ({ ...k, START: true }));
-          onPressStart?.();
-          break;
-        case 'shift':
-        case ' ':
-          setPressedKeys((k) => ({ ...k, SELECT: true }));
-          onPressSelect?.();
-          break;
-        case 'escape':
-          setIsExpanded(false);
-          break;
-      }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      switch (e.key.toLowerCase()) {
-        case 'arrowup': setPressedKeys((k) => ({ ...k, UP: false })); break;
-        case 'arrowdown': setPressedKeys((k) => ({ ...k, DOWN: false })); break;
-        case 'arrowleft': setPressedKeys((k) => ({ ...k, LEFT: false })); break;
-        case 'arrowright': setPressedKeys((k) => ({ ...k, RIGHT: false })); break;
-        case 'z': case 'a': setPressedKeys((k) => ({ ...k, A: false })); break;
-        case 'x': case 'b': setPressedKeys((k) => ({ ...k, B: false })); break;
-        case 'enter': setPressedKeys((k) => ({ ...k, START: false })); break;
-        case 'shift': case ' ': setPressedKeys((k) => ({ ...k, SELECT: false })); break;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, [onPressA, onPressB, onPressStart, onPressSelect, onPressDirection]);
+  const { pressedKeys, triggerButton } = useControls({
+    onPressA,
+    onPressB,
+    onPressStart,
+    onPressSelect,
+    onPressDirection,
+    onEscape: () => setIsExpanded(false),
+  });
 
   const handleConsoleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -224,13 +144,6 @@ export function ConsoleShell({
   const handleOutsideClick = useCallback(() => {
     setIsExpanded(false);
   }, []);
-
-  const triggerButton = (btn: 'A' | 'B' | 'START' | 'SELECT' | 'UP' | 'DOWN' | 'LEFT' | 'RIGHT', action?: () => void) => {
-    if (['A', 'B', 'START', 'SELECT'].includes(btn)) {
-      playRetroSound('beep');
-    }
-    action?.();
-  };
 
   return (
     <div
@@ -300,20 +213,24 @@ export function ConsoleShell({
           <div className="relative w-full h-full mt-2 sm:mt-4">
             {/* D-Pad (left side) */}
             <div className="absolute top-6 sm:top-8 left-2 sm:left-4">
-              <DPad
+              <DPadCluster
+                size="mobile"
                 pressedKeys={pressedKeys}
-                triggerButton={triggerButton as any}
+                triggerButton={triggerButton}
                 onPressDirection={onPressDirection}
               />
             </div>
 
-            {/* A & B Buttons (right side) — extracted */}
-            <ABButtons
-              pressedKeys={pressedKeys}
-              onPressA={onPressA}
-              onPressB={onPressB}
-              triggerButton={triggerButton}
-            />
+            {/* A & B Buttons (right side) */}
+            <div className="absolute top-6 sm:top-8 right-2 sm:right-4">
+              <ABDiagonalCluster
+                size="mobile"
+                pressedKeys={pressedKeys}
+                onPressA={onPressA}
+                onPressB={onPressB}
+                triggerButton={triggerButton}
+              />
+            </div>
 
             {/* Speaker Grill (center) */}
             <div className="absolute bottom-16 sm:bottom-20 left-1/2 -translate-x-1/2 flex flex-col gap-1.5 items-center">
@@ -335,13 +252,16 @@ export function ConsoleShell({
               </div>
             </div>
 
-            {/* START and SELECT buttons — extracted */}
-            <StartSelectButtons
-              pressedKeys={pressedKeys}
-              onPressStart={onPressStart}
-              onPressSelect={onPressSelect}
-              triggerButton={triggerButton}
-            />
+            {/* START and SELECT buttons */}
+            <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2">
+              <StartSelectCluster
+                size="mobile"
+                pressedKeys={pressedKeys}
+                onPressStart={onPressStart}
+                onPressSelect={onPressSelect}
+                triggerButton={triggerButton}
+              />
+            </div>
           </div>
         </div>
       </div>

@@ -141,12 +141,12 @@ vi.mock('./components/ExportEmbedView', () => ({
 }));
 
 // ---------------------------------------------------------------------------
-// Mock ConsoleShell — renders children + physical button triggers
+// Mock DesktopLayout — renders children + physical button triggers
 // ---------------------------------------------------------------------------
 
-vi.mock('./components/ConsoleShell', () => ({
-  ConsoleShell: ({ children, onPressA, onPressB, onPressSelect, onPressDirection }: any) => (
-    <div data-testid="console-shell">
+vi.mock('./components/DesktopLayout', () => ({
+  DesktopLayout: ({ children, onPressA, onPressB, onPressSelect, onPressDirection }: any) => (
+    <div data-testid="desktop-layout">
       <button data-testid="physical-a-btn" onClick={onPressA}>A</button>
       <button data-testid="physical-b-btn" onClick={onPressB}>B</button>
       <button data-testid="physical-select-btn" onClick={onPressSelect}>SELECT</button>
@@ -268,9 +268,9 @@ describe('App', () => {
   // ===================================================================
 
   describe('initial render', () => {
-    it('renders within ConsoleShell', async () => {
+    it('renders within DesktopLayout', async () => {
       const container = await renderApp();
-      expect(container.querySelector('[data-testid="console-shell"]')).toBeInTheDocument();
+      expect(container.querySelector('[data-testid="desktop-layout"]')).toBeInTheDocument();
     });
 
     it('shows the splash screen by default', async () => {

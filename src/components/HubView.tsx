@@ -108,7 +108,7 @@ export function HubView({
   }, [cursor, OPTIONS, onSelectOption]);
 
   return (
-    <div className="flex-1 flex flex-col justify-between p-1 px-1.5 text-[#1a1a1a] select-none font-mono">
+    <div className="flex-1 flex flex-col justify-between p-1 px-1.5 md:px-2.5 md:py-1.5 text-[#1a1a1a] select-none font-mono">
       {/* Visual Header */}
       <div className="flex justify-between items-center border-b-2 border-[#1a1a1a] pb-1.5 font-bold text-[9px] tracking-tight">
         <span>GITTYMON HUB V2</span>
@@ -139,7 +139,7 @@ export function HubView({
       </div>
 
       {/* Retro Menu Core */}
-      <div className="flex-1 flex flex-col justify-center py-1 font-mono text-[9px] space-y-1">
+      <div className="flex-1 flex flex-col justify-center py-1 md:py-1.5 font-mono text-[9px] space-y-1 md:space-y-1.5">
         {OPTIONS.map((opt, idx) => {
           const isSelected = cursor === idx;
           return (
@@ -168,7 +168,7 @@ export function HubView({
       </div>
 
       {/* Screen Sub-narrative dialog footer */}
-      <div className="h-6.5 border-2 border-[#1a1a1a] bg-[#e1dfde] rounded p-1 text-[7.5px] leading-tight flex items-center justify-between text-gray-700">
+      <div className="min-h-[clamp(22px,5vh,30px)] border-2 border-[#1a1a1a] bg-[#e1dfde] rounded p-1 text-[7.5px] sm:text-[8px] leading-tight flex items-center justify-between text-gray-700">
         <span className="truncate pr-1">{OPTIONS[cursor].desc}</span>
         <span className="text-[6.5px] uppercase text-gray-500 font-bold shrink-0 border border-gray-400 px-0.5 rounded">
           A=GO

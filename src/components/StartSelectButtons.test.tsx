@@ -1,36 +1,37 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { StartSelectButtons } from './StartSelectButtons';
+import { StartSelectCluster } from './FloatingControls';
 
-describe('StartSelectButtons', () => {
+describe('StartSelectCluster (née StartSelectButtons)', () => {
   const defaultProps = {
+    size: 'mobile' as const,
     pressedKeys: { START: false, SELECT: false },
     triggerButton: vi.fn(),
   };
 
   it('renders both START and SELECT pill buttons', () => {
-    render(<StartSelectButtons {...defaultProps} />);
-    expect(screen.getByLabelText('Start button')).toBeInTheDocument();
-    expect(screen.getByLabelText('Select button')).toBeInTheDocument();
+    render(<StartSelectCluster {...defaultProps} />);
+    expect(screen.getByLabelText('START button')).toBeInTheDocument();
+    expect(screen.getByLabelText('SELECT button')).toBeInTheDocument();
   });
 
-  it('renders START and SELECT labels underneath', () => {
-    render(<StartSelectButtons {...defaultProps} />);
+  it('renders START and SELECT labels (embossed)', () => {
+    render(<StartSelectCluster {...defaultProps} />);
     expect(screen.getByText('START')).toBeInTheDocument();
     expect(screen.getByText('SELECT')).toBeInTheDocument();
   });
 
   it('calls triggerButton with "START" when START is clicked', () => {
     const triggerButton = vi.fn();
-    render(<StartSelectButtons {...defaultProps} triggerButton={triggerButton} />);
-    fireEvent.click(screen.getByLabelText('Start button'));
+    render(<StartSelectCluster {...defaultProps} triggerButton={triggerButton} />);
+    fireEvent.click(screen.getByLabelText('START button'));
     expect(triggerButton).toHaveBeenCalledWith('START', undefined);
   });
 
   it('calls triggerButton with "SELECT" when SELECT is clicked', () => {
     const triggerButton = vi.fn();
-    render(<StartSelectButtons {...defaultProps} triggerButton={triggerButton} />);
-    fireEvent.click(screen.getByLabelText('Select button'));
+    render(<StartSelectCluster {...defaultProps} triggerButton={triggerButton} />);
+    fireEvent.click(screen.getByLabelText('SELECT button'));
     expect(triggerButton).toHaveBeenCalledWith('SELECT', undefined);
   });
 
@@ -38,13 +39,13 @@ describe('StartSelectButtons', () => {
     const onPressStart = vi.fn();
     const triggerButton = vi.fn();
     render(
-      <StartSelectButtons
+      <StartSelectCluster
         {...defaultProps}
         triggerButton={triggerButton}
         onPressStart={onPressStart}
       />,
     );
-    fireEvent.click(screen.getByLabelText('Start button'));
+    fireEvent.click(screen.getByLabelText('START button'));
     expect(triggerButton).toHaveBeenCalledWith('START', onPressStart);
   });
 
@@ -52,50 +53,51 @@ describe('StartSelectButtons', () => {
     const onPressSelect = vi.fn();
     const triggerButton = vi.fn();
     render(
-      <StartSelectButtons
+      <StartSelectCluster
         {...defaultProps}
         triggerButton={triggerButton}
         onPressSelect={onPressSelect}
       />,
     );
-    fireEvent.click(screen.getByLabelText('Select button'));
+    fireEvent.click(screen.getByLabelText('SELECT button'));
     expect(triggerButton).toHaveBeenCalledWith('SELECT', onPressSelect);
   });
 
   it('applies pressed state classes when START is pressed', () => {
     render(
-      <StartSelectButtons
+      <StartSelectCluster
         {...defaultProps}
         pressedKeys={{ START: true, SELECT: false }}
       />,
     );
-    const btn = screen.getByLabelText('Start button');
-    expect(btn.className).toContain('shadow-inner');
+    const btn = screen.getByLabelText('START button');
+    // Pressed state adds translate-y to simulate depression; shadow-inner is always present
+    expect(btn.className).toContain('translate-y-[0.5px]');
   });
 
   it('applies pressed state classes when SELECT is pressed', () => {
     render(
-      <StartSelectButtons
+      <StartSelectCluster
         {...defaultProps}
         pressedKeys={{ START: false, SELECT: true }}
       />,
     );
-    const btn = screen.getByLabelText('Select button');
-    expect(btn.className).toContain('shadow-inner');
+    const btn = screen.getByLabelText('SELECT button');
+    expect(btn.className).toContain('translate-y-[0.5px]');
   });
 
-  it('does not apply pressed classes when no buttons are pressed', () => {
-    render(<StartSelectButtons {...defaultProps} />);
-    expect(screen.getByLabelText('Start button').className).not.toContain('shadow-inner');
-    expect(screen.getByLabelText('Select button').className).not.toContain('shadow-inner');
+  it('does not apply pressed depression when no buttons are pressed', () => {
+    render(<StartSelectCluster {...defaultProps} />);
+    expect(screen.getByLabelText('START button').className).not.toContain('translate-y-[0.5px]');
+    expect(screen.getByLabelText('SELECT button').className).not.toContain('translate-y-[0.5px]');
   });
 
   it('does not throw when onPress callbacks are undefined', () => {
     const triggerButton = vi.fn();
-    render(<StartSelectButtons {...defaultProps} triggerButton={triggerButton} />);
+    render(<StartSelectCluster {...defaultProps} triggerButton={triggerButton} />);
     expect(() => {
-      fireEvent.click(screen.getByLabelText('Start button'));
-      fireEvent.click(screen.getByLabelText('Select button'));
+      fireEvent.click(screen.getByLabelText('START button'));
+      fireEvent.click(screen.getByLabelText('SELECT button'));
     }).not.toThrow();
   });
 });

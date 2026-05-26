@@ -63,7 +63,7 @@ export function SummoningView({ username, onFinished }: SummoningViewProps) {
   }, [percent, onFinished]);
 
   return (
-    <div className="flex-1 flex flex-col justify-between p-1 text-[#1a1a1a]">
+    <div className="flex-1 flex flex-col justify-between p-1 md:px-2 md:py-1.5 text-[#1a1a1a]">
       {/* Upper header */}
       <div className="border-b border-[#1a1a1a] pb-1 dither-border-b text-center">
         <h2 className="font-sans font-bold text-xs uppercase tracking-wider">
@@ -73,7 +73,7 @@ export function SummoningView({ username, onFinished }: SummoningViewProps) {
 
       {/* Center scrolling logs */}
       <div className="flex-1 flex flex-col justify-center my-2 space-y-4 px-1">
-        <div className="border border-[#1a1a1a] bg-white p-2 h-[120px] flex flex-col font-mono text-[9px] leading-tight overflow-y-auto space-y-1">
+        <div className="border border-[#1a1a1a] bg-white p-2 flex-1 flex flex-col font-mono text-[9px] sm:text-[10px] leading-tight overflow-y-auto space-y-1">
           {logs.map((log, index) => (
             <div key={index} className="animate-stagger-pop flex" style={{ animationDelay: `${(index % 6) * 60}ms` }}>
               <span className="text-[#7f001c] mr-1">&gt;</span>

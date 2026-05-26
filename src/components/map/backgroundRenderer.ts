@@ -15,8 +15,6 @@ export interface RenderContext {
   ctx: CanvasRenderingContext2D;
   canvasW: number;
   canvasH: number;
-  expanded: boolean;
-  gridOffset: { x: number; y: number };
   monRefs: Gittymon[];
   particleRefs: CosmicParticle[];
   mouse: { x: number; y: number; idleTicks: number };
@@ -25,31 +23,6 @@ export interface RenderContext {
 /* ------------------------------------------------------------------ */
 /*  Background grid, radar circles, mouse crosshair HUD               */
 /* ------------------------------------------------------------------ */
-
-function drawGrid(ctx: CanvasRenderingContext2D, w: number, h: number, gx: number, gy: number) {
-  const gridSize = 64;
-  ctx.strokeStyle = 'rgba(56, 189, 248, 0.05)';
-  ctx.lineWidth = 1;
-  for (let x = -gridSize + (gx % gridSize); x < w + gridSize; x += gridSize) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, h);
-    ctx.stroke();
-  }
-  for (let y = -gridSize + (gy % gridSize); y < h + gridSize; y += gridSize) {
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(w, y);
-    ctx.stroke();
-  }
-}
-
-function drawRadarCircle(ctx: CanvasRenderingContext2D, w: number, h: number) {
-  ctx.strokeStyle = 'rgba(244, 63, 94, 0.03)';
-  ctx.beginPath();
-  ctx.arc(w / 2, h / 2, 380, 0, Math.PI * 2);
-  ctx.stroke();
-}
 
 function drawMouseHUD(ctx: CanvasRenderingContext2D, m: { x: number; y: number; idleTicks: number }) {
   if (m.x < 0 || m.y < 0 || m.idleTicks >= 300) return;
@@ -85,13 +58,11 @@ function drawMouseHUD(ctx: CanvasRenderingContext2D, m: { x: number; y: number; 
 
 /** Render one animation frame onto the canvas */
 export function renderFrame(ctx: RenderContext) {
-  const { ctx: c, canvasW, canvasH, gridOffset, mouse, particleRefs, monRefs } = ctx;
+  const { ctx: c, canvasW, canvasH, mouse, particleRefs, monRefs } = ctx;
 
   // --- Clear & background ---
   c.fillStyle = '#0a0d16';
   c.fillRect(0, 0, canvasW, canvasH);
-  drawGrid(c, canvasW, canvasH, gridOffset.x, gridOffset.y);
-  drawRadarCircle(c, canvasW, canvasH);
   drawMouseHUD(c, mouse);
 
   // --- Particles ---

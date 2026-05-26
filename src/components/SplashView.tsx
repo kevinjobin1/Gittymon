@@ -116,13 +116,13 @@ export function SplashView({ onSummon, identity, onGoToCollection }: SplashViewP
   // Returning user view — show welcome back with quick actions
   if (isReturningUser) {
     return (
-      <div className="flex-1 flex flex-col justify-between py-2 px-1 text-[#1a1a1a]">
+      <div className="flex-1 flex flex-col justify-between py-2 px-1 md:px-2 text-[#1a1a1a]">
         {/* Welcome Header */}
         <div className="border-b border-[#1a1a1a] pb-2 border-dashed text-center">
-          <h1 className="font-sans font-bold text-lg uppercase tracking-widest">
+          <h1 className="font-sans font-bold text-lg sm:text-xl md:text-2xl uppercase tracking-widest">
             WELCOME BACK
           </h1>
-          <p className="font-mono text-xs font-bold text-[#7f001c] mt-0.5">
+          <p className="font-mono text-xs sm:text-sm font-bold text-[#7f001c] mt-0.5">
             @{identity!.username.toUpperCase()}
           </p>
         </div>
@@ -130,13 +130,13 @@ export function SplashView({ onSummon, identity, onGoToCollection }: SplashViewP
         {/* Stats row */}
         <div className="flex justify-center gap-4 my-2 shrink-0">
           <div className="text-center">
-            <p className="font-mono text-[22px] font-bold leading-none">{identity!.cards.length}</p>
-            <p className="font-mono text-[7px] uppercase tracking-wider text-gray-500">Cards</p>
+            <p className="font-mono text-[22px] sm:text-[26px] font-bold leading-none">{identity!.cards.length}</p>
+            <p className="font-mono text-[7px] sm:text-[8px] uppercase tracking-wider text-gray-500">Cards</p>
           </div>
           <div className="w-px bg-[#1a1a1a] opacity-20 self-stretch" />
           <div className="text-center">
-            <p className="font-mono text-[22px] font-bold leading-none">{identity!.totalRerolls}</p>
-            <p className="font-mono text-[7px] uppercase tracking-wider text-gray-500">Rerolls</p>
+            <p className="font-mono text-[22px] sm:text-[26px] font-bold leading-none">{identity!.totalRerolls}</p>
+            <p className="font-mono text-[7px] sm:text-[8px] uppercase tracking-wider text-gray-500">Rerolls</p>
           </div>
         </div>
 
@@ -147,11 +147,11 @@ export function SplashView({ onSummon, identity, onGoToCollection }: SplashViewP
               ref={demoCanvasRef}
               width={460}
               height={220}
-              className="w-full h-auto max-h-[130px] object-contain"
+              className="w-full h-auto max-h-[clamp(80px,20vh,160px)] object-contain"
               style={{ imageRendering: "pixelated" }}
             />
           </div>
-          <p className="font-mono text-[7px] text-gray-500 uppercase tracking-normal text-center mt-1">
+          <p className="font-mono text-[7px] sm:text-[8px] text-gray-500 uppercase tracking-normal text-center mt-1">
             {favoriteCard
               ? `⭐ ${favoriteCard.base.name} (${favoriteCard.rarity.toUpperCase()})`
               : 'preview: @octocat'}
@@ -162,16 +162,16 @@ export function SplashView({ onSummon, identity, onGoToCollection }: SplashViewP
         <div className="flex-1 flex flex-col items-center justify-center space-y-2">
           <button
             onClick={onGoToCollection}
-            className="retro-btn-ingame w-full py-2.5 font-mono font-bold text-[11px] cursor-pointer tracking-wider"
+            className="retro-btn-ingame w-full py-2.5 sm:py-3 font-mono font-bold text-[11px] sm:text-[13px] cursor-pointer tracking-wider"
           >
             VIEW COLLECTION ▸
           </button>
 
-          <p className="font-mono text-[8px] text-gray-500 uppercase">— or —</p>
+          <p className="font-mono text-[8px] sm:text-[9px] text-gray-500 uppercase">— or —</p>
 
           <form onSubmit={handleSubmit} className="w-full space-y-2">
             <div className="flex flex-col">
-              <label className="font-mono text-[9px] font-bold text-[#1a1a1a] uppercase tracking-wider mb-1">
+              <label className="font-mono text-[9px] sm:text-[10px] font-bold text-[#1a1a1a] uppercase tracking-wider mb-1">
                 SUMMON NEW CARD:
               </label>
               <input
@@ -185,7 +185,7 @@ export function SplashView({ onSummon, identity, onGoToCollection }: SplashViewP
                 spellCheck="false"
               />
               {error && (
-                <p className="font-mono text-[8px] text-[#7f001c] font-bold mt-1">
+                <p className="font-mono text-[8px] sm:text-[9px] text-[#7f001c] font-bold mt-1">
                   ! {error}
                 </p>
               )}
@@ -193,24 +193,23 @@ export function SplashView({ onSummon, identity, onGoToCollection }: SplashViewP
 
             <button
               type="submit"
-              className="retro-btn-ingame w-full py-2.5 font-mono font-bold text-[11px] cursor-pointer tracking-wider"
+              className="retro-btn-ingame w-full py-2.5 sm:py-3 font-mono font-bold text-[11px] sm:text-[13px] cursor-pointer tracking-wider"
             >
               GET YOUR BADGE ▸
             </button>
           </form>
         </div>
 
-        {/* Footer */}
-        <div className="border-t border-[#1a1a1a] border-dashed pt-1 mt-2 text-center font-mono text-[7px] text-gray-500 shrink-0">
-          GITTYMON v2 • IDENTITY CARD SYSTEM
-        </div>
+        {/* Footer */}      <div className="border-t border-[#1a1a1a] border-dashed pt-1 mt-2 text-center font-mono text-[7px] sm:text-[8px] text-gray-500 shrink-0">
+        GITTYMON v2 • IDENTITY CARD SYSTEM
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   // New user view — prompt to create identity via first summon
   return (
-    <div className="flex-1 flex flex-col justify-between py-2 px-1 text-[#1a1a1a]">
+    <div className="flex-1 flex flex-col justify-between py-2 px-1 md:px-2 text-[#1a1a1a]">
       {/* Demo Card Preview */}
       <div className="flex flex-col items-center mb-2 shrink-0">
         <div className="w-full bg-[#18181b] p-1 border border-[#1a1a1a] rounded flex items-center justify-center overflow-hidden">
@@ -218,11 +217,11 @@ export function SplashView({ onSummon, identity, onGoToCollection }: SplashViewP
             ref={demoCanvasRef}
             width={460}
             height={220}
-            className="w-full h-auto max-h-[130px] object-contain"
+            className="w-full h-auto max-h-[clamp(80px,20vh,160px)] object-contain"
             style={{ imageRendering: "pixelated" }}
           />
         </div>
-        <p className="font-mono text-[7px] text-gray-500 uppercase tracking-normal text-center mt-1">
+        <p className="font-mono text-[7px] sm:text-[8px] text-gray-500 uppercase tracking-normal text-center mt-1">
           preview: @octocat
         </p>
       </div>
@@ -245,7 +244,7 @@ export function SplashView({ onSummon, identity, onGoToCollection }: SplashViewP
               spellCheck="false"
             />
             {error && (
-              <p className="font-mono text-[8px] text-[#7f001c] font-bold mt-1">
+              <p className="font-mono text-[8px] sm:text-[9px] text-[#7f001c] font-bold mt-1">
                 ! {error}
               </p>
             )}
@@ -253,19 +252,19 @@ export function SplashView({ onSummon, identity, onGoToCollection }: SplashViewP
 
           <button
             type="submit"
-            className="retro-btn-ingame w-full py-2.5 font-mono font-bold text-[11px] cursor-pointer tracking-wider"
+            className="retro-btn-ingame w-full py-2.5 sm:py-3 font-mono font-bold text-[11px] sm:text-[13px] cursor-pointer tracking-wider"
           >
             CREATE YOUR IDENTITY ▸
           </button>
         </form>
 
-        <p className="font-mono text-[7px] text-gray-400 uppercase text-center leading-tight">
+        <p className="font-mono text-[7px] sm:text-[8px] text-gray-400 uppercase text-center leading-tight">
           Accepts GitHub URLs, @mentions, or plain usernames
         </p>
       </div>
 
       {/* Footer */}
-      <div className="border-t border-[#1a1a1a] border-dashed pt-1 mt-2 text-center font-mono text-[7px] text-gray-500 shrink-0">
+      <div className="border-t border-[#1a1a1a] border-dashed pt-1 mt-2 text-center font-mono text-[7px] sm:text-[8px] text-gray-500 shrink-0">
         GITTYMON v2 • IDENTITY CARD SYSTEM
       </div>
     </div>

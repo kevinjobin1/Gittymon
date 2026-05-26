@@ -46,6 +46,7 @@ const SCATTER_RADIUS = 240;
 
 export interface UseCanvasGameOptions {
   isExpanded: boolean;
+  onMonsterClick?: (monster: Gittymon) => void;
 }
 
 export interface UseCanvasGameReturn {
@@ -53,18 +54,24 @@ export interface UseCanvasGameReturn {
   logs: LogMessage[];
   mapFocused: boolean;
   windowSize: { width: number; height: number };
+  hoveredMonster: Gittymon | null;
+  mousePos: { x: number; y: number };
 }
 
-export function useCanvasGame({ isExpanded }: UseCanvasGameOptions): UseCanvasGameReturn {
+export function useCanvasGame({ isExpanded, onMonsterClick }: UseCanvasGameOptions): UseCanvasGameReturn {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [windowSize, setWindowSize] = useState({ width: 800, height: 600 });
   const [logs, setLogs] = useState<LogMessage[]>([]);
   const [mapFocused, setMapFocused] = useState(false);
 
+  // Hover state (throttled via ref to avoid render storms)
+  const hoveredRef = useRef<Gittymon | null>(null);
+  const [hoveredMonster, setHoveredMonster] = useState<Gittymon | null>(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
   // Mutable refs for the animation loop
   const monRefs = useRef<Gittymon[]>([]);
   const particleRefs = useRef<CosmicParticle[]>([]);
-  const gridOffsetRef = useRef({ x: 0, y: 0 });
   const expandedRef = useRef(isExpanded);
   expandedRef.current = isExpanded;
 
@@ -138,6 +145,9 @@ export function useCanvasGame({ isExpanded }: UseCanvasGameOptions): UseCanvasGa
           return next;
         });
         setTimeout(() => setLogs((prev) => prev.filter((l) => l.id !== logId)), 5000);
+
+        // Fire summon callback
+        onMonsterClick?.(clicked);
       }
 
       // Spark particles at click point
@@ -184,23 +194,32 @@ export function useCanvasGame({ isExpanded }: UseCanvasGameOptions): UseCanvasGa
       const m = mouseRef.current;
       m.idleTicks++;
 
-      // Parallax drift when expanded
-      const p = gridOffsetRef.current;
-      if (expandedRef.current) {
-        const t = Date.now() / 4000;
-        p.x += (Math.sin(t * 0.7) * 12 - p.x) * 0.02;
-        p.y += (Math.cos(t * 0.5) * 8 - p.y) * 0.02;
-      } else {
-        p.x *= 0.96;
-        p.y *= 0.96;
+
+
+      // Hover detection — check which monster is closest to the mouse
+      const mx = m.x;
+      const my = m.y;
+      const monsters = monRefs.current;
+      let hovered: Gittymon | null = null;
+      let hoverDist = CLICK_REACT_RADIUS * 1.5; // slightly larger than click radius
+      for (let i = 0; i < monsters.length; i++) {
+        const dx = monsters[i].x - mx;
+        const dy = monsters[i].y + monsters[i].jumpY - my;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < hoverDist) { hoverDist = dist; hovered = monsters[i]; }
       }
 
-      renderFrame({
+      // Only update React state when hover changes (avoids re-render storms)
+      if (hovered?.id !== hoveredRef.current?.id) {
+        hoveredRef.current = hovered;
+        setHoveredMonster(hovered);
+      }
+      if (mx !== mousePos.x || my !== mousePos.y) {
+        setMousePos({ x: mx, y: my });
+      }      renderFrame({
         ctx,
         canvasW: canvas.width,
         canvasH: canvas.height,
-        expanded: expandedRef.current,
-        gridOffset: p,
         monRefs: monRefs.current,
         particleRefs: particleRefs.current,
         mouse: m,
@@ -213,5 +232,5 @@ export function useCanvasGame({ isExpanded }: UseCanvasGameOptions): UseCanvasGa
     return () => cancelAnimationFrame(animId);
   }, [windowSize]);
 
-  return { canvasRef, logs, mapFocused, windowSize };
+  return { canvasRef, logs, mapFocused, windowSize, hoveredMonster, mousePos };
 }

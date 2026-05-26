@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { RoastMon, ScreenID, type GittymonCard } from './types';
-import { ConsoleShell } from './components/ConsoleShell';
+import { DesktopLayout } from './components/DesktopLayout';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useIdentity } from './lib/useIdentity';
 import { determineRarity } from './lib/rarity';
 import { selectMutations } from './lib/mutations';
 import { getFormVariant } from './lib/reroll';
 import { playRetroSound, setBgmIntensity } from './utils/audio';
+import type { Gittymon } from './components/map/types';
 
 // Lazy-loaded screen components — split on async boundaries
 const SplashView = lazy(() => import('./components/SplashView').then(m => ({ default: m.SplashView })));
@@ -525,13 +526,20 @@ export default function App() {
 
   const { identity, addCard, createIdentity } = useIdentity();
 
+  // Handle background map monster clicks — summon using a demo username derived from the monster
+  const handleBackgroundMonsterClick = useCallback((monster: Gittymon) => {
+    const demoUsername = `ghost-${monster.type}-${monster.id}`;
+    handleSummonInitiate(demoUsername);
+  }, []);
+
   return (
-    <ConsoleShell
+    <DesktopLayout
       isSynced={!!activeMon}
       onPressA={handlePhysicalA}
       onPressB={handlePhysicalB}
       onPressSelect={handlePhysicalSelect}
       onPressDirection={handleDirectionPress}
+      onBackgroundMonsterClick={handleBackgroundMonsterClick}
     >
       <Suspense fallback={<div className="w-full h-full bg-[#f5f5f5] animate-pulse" />}>
         <ErrorBoundary>
@@ -673,6 +681,6 @@ export default function App() {
           </ScreenView>
         </ErrorBoundary>
       </Suspense>
-    </ConsoleShell>
+    </DesktopLayout>
   );
 }

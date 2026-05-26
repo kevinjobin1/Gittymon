@@ -272,9 +272,9 @@ export function AiBossBattleView({
   const bossHPPercent = Math.max(0, Math.min(100, (bossHP / BOSS_MON.maxHP) * 100));
 
   return (
-    <div className="flex-1 flex flex-col justify-between py-1 px-1 text-[#1a1a1a] select-none min-h-full relative font-mono">
+    <div className="flex-1 flex flex-col justify-between py-1 px-1 md:py-1.5 md:px-2 text-[#1a1a1a] select-none min-h-full relative font-mono">
       {/* Upper Combat Zone */}
-      <div className="flex-1 flex flex-col justify-between space-y-2 py-1 max-h-[195px] sm:max-h-[225px]">
+      <div className="flex-1 flex flex-col justify-between space-y-2 py-1 max-h-[50%]">
         {/* Opponent Status (Top Align) */}
         <div className="flex justify-between items-start border-b border-[#1a1a1a] border-dotted pb-1">
           <canvas
@@ -340,7 +340,7 @@ export function AiBossBattleView({
       <div className="w-full border-t border-[#1a1a1a] dither-border-b my-0.5" />
 
       {/* Screen action interaction zone */}
-      <div className="h-[68px] min-h-[68px] bg-white border border-[#1a1a1a] p-1 flex flex-col justify-between text-[8px] leading-tight select-none">
+      <div className="min-h-[clamp(60px,12vh,110px)] bg-white border border-[#1a1a1a] p-1 md:p-1.5 flex flex-col justify-between text-[8px] sm:text-[9px] leading-tight select-none">
         
         {isOver ? (
           <div className="flex-1 flex flex-col justify-between">

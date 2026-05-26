@@ -8,8 +8,8 @@
 }
 
 html, body {
-  background-color: #cbd5e1; /* Base gray background */
-  background-image: radial-gradient(#94a3b8 1px, transparent 1px);
+  background-color: #1a1740; /* GBA Indigo base */
+  background-image: radial-gradient(#2d2b55 1px, transparent 1px);
   background-size: 12px 12px;
   overflow-x: hidden;
   /* Pixelated cyan retro arrow pointer cursor */
@@ -81,9 +81,17 @@ button, select, input, [role="button"], a, .cursor-pointer, .pixel-trigger {
   background: #f5f5f5;
   border-left: 1.5px dashed #1a1a1a;
 }
-.game-screen-sp ::-webkit-scrollbar-thumb {
+.game-screen-sp ::-webkit-scrollbar-track:horizontal {
+  background: #f5f5f5;
+  border-top: 1.5px dashed #1a1a1a;
+  border-left: none;
+}.game-screen-sp ::-webkit-scrollbar-thumb {
   background: #7f001c;
   border: 1px solid #1a1a1a;
+}
+
+.game-screen-sp ::-webkit-scrollbar-corner {
+  background: #f5f5f5;
 }
 
 .retro-input {
@@ -165,14 +173,87 @@ button, select, input, [role="button"], a, .cursor-pointer, .pixel-trigger {
   50% { border-color: #1a1a1a }
 }
 
+/* ───────────────────────────────────────────── */
+/*  GBA Horizontal Layout (replaces SP clamshell) */
+/* ───────────────────────────────────────────── */
+
+/* GBA Shell — indigo outer frame */
+.gba-shell {
+  background-color: #2d2b55;
+  border: 2px solid #1a1740;
+}
+
+/* GBA Screen Bezel — dark frame around game area with recessed inner ring */
+.gba-screen-bezel {
+  background-color: #1e1d3a;
+  box-shadow:
+    inset 0 0 0 3px rgba(5,3,15,0.45),
+    inset 4px 4px 10px rgba(0,0,0,0.5),
+    0 1px 3px rgba(0,0,0,0.2);
+  border: 2px solid #161430;
+  scrollbar-width: thin;
+  scrollbar-color: #2d2b55 transparent;
+}
+
+/* Retro scrollbar inside the GBA screen bezel */
+.gba-screen-bezel::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.gba-screen-bezel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.gba-screen-bezel::-webkit-scrollbar-track:horizontal {
+  background: transparent;
+  border-top: 1px solid #161430;
+}
+
+.gba-screen-bezel::-webkit-scrollbar-thumb {
+  background: #2d2b55;
+  border-radius: 2px;
+  border: 1px solid #161430;
+}
+
+.gba-screen-bezel::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Embossed/molded text effect for labels printed on the GBA shell */
+.gba-embossed-text {
+  color: #8b89b8;
+  text-shadow:
+    0 -1px 0 rgba(255, 255, 255, 0.08),
+    0 1px 0 rgba(0, 0, 0, 0.35);
+  letter-spacing: 0.2em;
+}
+
+/* Docked Controls Bar (all breakpoints) */
+.gba-controls-bar {
+  background: linear-gradient(180deg, #2d2b55 0%, #1e1d3a 100%);
+  border-top: 2px solid #3a3870;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.4);
+  padding: 8px 0;
+}
+
 /* Game LCD Scanline simulation overlay */
 .lcd-grid {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background-image: radial-gradient(rgba(0,0,0,0.06) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(0,0,0,0.04) 1px, transparent 1px);
   background-size: 3px 3px;
-  opacity: 0.85;
+  opacity: 0.2;
+}
+
+/* Phosphor/LCD glow — subtle blue-green halo around the game screen edges */
+.game-screen-sp {
+  box-shadow:
+    inset 0 0 12px rgba(56, 189, 248, 0.08),
+    inset 0 0 4px rgba(16, 185, 129, 0.06),
+    inset 2px 2px 4px rgba(0, 0, 0, 0.2),
+    0 0 2px rgba(56, 189, 248, 0.04);
 }
 
 /* Boot animation styles */
@@ -482,5 +563,94 @@ button, select, input, [role="button"], a, .cursor-pointer, .pixel-trigger {
     transform: translateY(-5vh) translateX(var(--drift)) rotate(360deg);
     opacity: 0;
   }
+}
+
+/* Game button tap pulse — radial glow ripple on click (via ::after pseudo-element so the button's own box-shadow is preserved) */
+@keyframes btn-pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(0.4);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.8);
+    opacity: 0;
+  }
+}
+
+.animate-btn-pulse::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: transparent;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+  opacity: 0;
+}
+
+.animate-btn-pulse:active::after {
+  animation: btn-pulse 0.45s ease-out;
+}
+
+/* Power LED — soft pulse glow for the GBA shell indicator */
+@keyframes led-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 3px rgba(16, 185, 129, 0.6),
+      0 0 6px rgba(16, 185, 129, 0.3);
+    opacity: 0.85;
+  }
+  50% {
+    box-shadow:
+      0 0 5px rgba(16, 185, 129, 0.85),
+      0 0 12px rgba(16, 185, 129, 0.45);
+    opacity: 1;
+  }
+}
+
+.animate-led-pulse {
+  animation: led-pulse 2.5s ease-in-out infinite;
+}
+
+/* Scroll overflow hint — subtle glow at the bottom edge to indicate more content */
+@keyframes scroll-hint-glow {
+  0%, 100% {
+    box-shadow: inset 0 -8px 12px -6px rgba(56, 189, 248, 0.15),
+                inset 0 -2px 4px -2px rgba(56, 189, 248, 0.25);
+  }
+  50% {
+    box-shadow: inset 0 -8px 14px -6px rgba(56, 189, 248, 0.3),
+                inset 0 -2px 6px -2px rgba(56, 189, 248, 0.45);
+  }
+}
+
+.scroll-hint-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 24px;
+  pointer-events: none;
+  z-index: 20;
+  background: linear-gradient(to top, rgba(56, 189, 248, 0.08) 0%, rgba(56, 189, 248, 0.02) 40%, transparent 100%);
+  animation: scroll-hint-glow 2.5s ease-in-out infinite;
+  transition: opacity 0.4s ease-out;
+}
+
+/* ── D-Pad :active scale bounce ── */
+/* Immediate press feedback before React's pressedKeys state update.
+   Uses a CSS custom property so each direction's centering transform
+   (translateX for UP/DOWN, translateY for LEFT/RIGHT) is preserved. */
+@keyframes dpad-active-bounce {
+  0%   { transform: var(--dpad-base) scale(1); }
+  40%  { transform: var(--dpad-base) scale(0.93); }
+  100% { transform: var(--dpad-base) scale(1); }
+}
+
+.dpad-btn:active {
+  animation: dpad-active-bounce 120ms ease-out;
 }
 

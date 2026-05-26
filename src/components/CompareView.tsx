@@ -177,8 +177,8 @@ function CompareMiniCard({ card, label }: { card: GittymonCard; label: string })
   }, [card.base.spriteSeed]);
 
   return (
-    <div className="flex flex-col items-center bg-white border border-neutral-300 rounded p-1.5 w-[140px]">
-      <div className="text-[6px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">{label}</div>
+    <div className="flex flex-col items-center bg-white border border-neutral-300 rounded p-1.5 w-[clamp(120px,25vw,160px)]">
+      <div className="text-[6px] sm:text-[7px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">{label}</div>
       <div
         className="w-[18px] h-[2px] rounded-full mb-1.5"
         style={{ backgroundColor: config.color }}
@@ -187,13 +187,13 @@ function CompareMiniCard({ card, label }: { card: GittymonCard; label: string })
         ref={canvasRef}
         width={80}
         height={80}
-        className="w-[60px] h-[60px] pixelated"
+        className="w-[clamp(50px,12vw,80px)] h-[clamp(50px,12vw,80px)] pixelated"
         style={{ imageRendering: 'pixelated' }}
       />
-      <div className="mt-1 text-[8px] font-extrabold text-[#1a1a1a] text-center leading-tight truncate w-full">
+      <div className="mt-1 text-[8px] sm:text-[9px] font-extrabold text-[#1a1a1a] text-center leading-tight truncate w-full">
         {card.base.name.toUpperCase()}
       </div>
-      <div className="text-[5.5px] text-gray-500 text-center leading-tight truncate w-full">
+      <div className="text-[5.5px] sm:text-[6px] text-gray-500 text-center leading-tight truncate w-full">
         LV{card.base.level} · {card.form.name.toUpperCase()}
       </div>
       <div className="text-[5px] text-gray-400 text-center leading-tight truncate w-full">
@@ -366,22 +366,22 @@ export function CompareView({
   const mutations2 = card2.mutations.map((m) => m.label);
 
   return (
-    <div className="flex-1 flex flex-col justify-between p-1 px-1.5 text-[#1a1a1a] select-none font-mono min-h-full">
+    <div className="flex-1 flex flex-col justify-between p-1 px-1.5 md:px-2.5 md:py-1.5 text-[#1a1a1a] select-none font-mono min-h-full">
       {/* ── Header ── */}
-      <div className="flex justify-between items-center border-b-2 border-[#1a1a1a] pb-1 font-bold text-[9px] tracking-tight shrink-0">
+      <div className="flex justify-between items-center border-b-2 border-[#1a1a1a] pb-1 font-bold text-[9px] sm:text-[10px] tracking-tight shrink-0">
         <span className="text-[#7f001c]">▲ CARD COMPARE</span>
-        <button onClick={onBack} className="hover:underline text-[7.5px] uppercase font-bold text-gray-500">
+        <button onClick={onBack} className="hover:underline text-[7.5px] sm:text-[8.5px] uppercase font-bold text-gray-500">
           ◀ BACK (B)
         </button>
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0 mt-1 space-y-2 scrollbar-thin">
         {/* ── Two Card Display ── */}
-        <div className="flex justify-center items-start gap-3">
+        <div className="flex justify-center items-start gap-3 md:gap-4">
           <CompareMiniCard card={card1} label="CARD 1" />
           <div className="flex flex-col items-center justify-center mt-6">
-            <span className="text-[16px] font-black text-gray-400">VS</span>
-            <div className="text-[6px] text-gray-500 mt-1 uppercase text-center leading-tight">
+            <span className="text-[clamp(14px,3.5vw,20px)] font-black text-gray-400">VS</span>
+            <div className="text-[6px] sm:text-[7px] text-gray-500 mt-1 uppercase text-center leading-tight">
               Stat<br/>Battle
             </div>
           </div>
@@ -390,7 +390,7 @@ export function CompareView({
 
         {/* ── Stat Comparison ── */}
         <div className="bg-white border border-neutral-300 rounded p-1.5 space-y-1.5">
-          <div className="text-[7px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+          <div className="text-[7px] sm:text-[8px] font-bold text-gray-500 uppercase tracking-wider mb-1">
             📊 STAT COMPARISON
           </div>
           {STAT_CONFIGS.map((stat, si) => (
@@ -410,33 +410,33 @@ export function CompareView({
         {/* ── Summary Row ── */}
         <div className="flex justify-between items-center gap-2 bg-neutral-50 border border-neutral-200 rounded p-1">
           <div className="flex flex-col items-center flex-1">
-            <span className="text-[6px] text-gray-400 uppercase">Rarity</span>
+            <span className="text-[6px] sm:text-[7px] text-gray-400 uppercase">Rarity</span>
             <div className="flex items-center gap-1 mt-0.5">
               <span
                 className="w-2 h-2 rounded-full"
                 style={{ backgroundColor: config1.color }}
               />
-              <span className="text-[7px] font-bold">{config1.label}</span>
+              <span className="text-[7px] sm:text-[8px] font-bold">{config1.label}</span>
             </div>
           </div>
           <div className="flex flex-col items-center flex-1">
-            <span className="text-[6px] text-gray-400 uppercase">Evo Tier</span>
-            <span className="text-[7px] font-bold">{card1.evolutionTier} ⚡ {card2.evolutionTier}</span>
+            <span className="text-[6px] sm:text-[7px] text-gray-400 uppercase">Evo Tier</span>
+            <span className="text-[7px] sm:text-[8px] font-bold">{card1.evolutionTier} ⚡ {card2.evolutionTier}</span>
           </div>
           <div className="flex flex-col items-center flex-1">
-            <span className="text-[6px] text-gray-400 uppercase">Mutations</span>
-            <span className="text-[7px] font-bold">{card1.mutations.length} ✦ {card2.mutations.length}</span>
+            <span className="text-[6px] sm:text-[7px] text-gray-400 uppercase">Mutations</span>
+            <span className="text-[7px] sm:text-[8px] font-bold">{card1.mutations.length} ✦ {card2.mutations.length}</span>
           </div>
           <div className="flex flex-col items-center flex-1">
-            <span className="text-[6px] text-gray-400 uppercase">Rerolls</span>
-            <span className="text-[7px] font-bold">{card1.rerollCount} ♻️ {card2.rerollCount}</span>
+            <span className="text-[6px] sm:text-[7px] text-gray-400 uppercase">Rerolls</span>
+            <span className="text-[7px] sm:text-[8px] font-bold">{card1.rerollCount} ♻️ {card2.rerollCount}</span>
           </div>
         </div>
 
         {/* ── Mutations Detail ── */}
         {(mutations1.length > 0 || mutations2.length > 0) && (
           <div className="bg-white border border-neutral-300 rounded p-1.5">
-            <div className="text-[7px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+            <div className="text-[7px] sm:text-[8px] font-bold text-gray-500 uppercase tracking-wider mb-1">
               🧬 ACTIVE MUTATIONS
             </div>
             <div className="flex gap-3">
@@ -483,7 +483,7 @@ export function CompareView({
                   : 'bg-amber-50 border-amber-400'
             }`}
           >
-            <div className="text-[8px] font-bold leading-tight text-[#1a1a1a]">
+            <div className="text-[8px] sm:text-[9px] font-bold leading-tight text-[#1a1a1a]">
               {result.text}
             </div>
           </div>
@@ -492,12 +492,12 @@ export function CompareView({
         {/* ── Battle Highlights ── */}
         {result && result.statHighlights.length > 0 && (
           <div className="bg-white border border-neutral-300 rounded p-1.5">
-            <div className="text-[7px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+            <div className="text-[7px] sm:text-[8px] font-bold text-gray-500 uppercase tracking-wider mb-1">
               ⚡ BATTLE HIGHLIGHTS
             </div>
             <div className="space-y-0.5">
               {result.statHighlights.map((h, i) => (
-                <div key={i} className="text-[6px] text-gray-600 leading-tight flex items-center gap-1">
+                <div key={i} className="text-[6px] sm:text-[7px] text-gray-600 leading-tight flex items-center gap-1">
                   <span className="text-[5px]">▸</span>
                   <span>{h}</span>
                 </div>
@@ -508,7 +508,7 @@ export function CompareView({
       </div>
 
       {/* ── Footer ── */}
-      <div className="border-t border-dashed border-[#1a1a1a] pt-1 flex justify-between items-center font-mono text-[8px] mt-1 shrink-0">
+      <div className="border-t border-dashed border-[#1a1a1a] pt-1 flex justify-between items-center font-mono text-[8px] sm:text-[9px] mt-1 shrink-0">
         <button onClick={onBack} className="text-gray-500 hover:text-[#1a1a1a] cursor-pointer">
           &lt; B-BACK
         </button>

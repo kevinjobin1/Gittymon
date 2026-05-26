@@ -55,7 +55,7 @@ export function HistoryView({ history, onSelect, onClearIndex, onBack }: History
   };
 
   return (
-    <div className="flex-1 flex flex-col justify-between py-1 px-1 text-[#1a1a1a] min-h-full select-none">
+    <div className="flex-1 flex flex-col justify-between py-1 px-1 md:py-1.5 md:px-2 text-[#1a1a1a] min-h-full select-none">
       
       {/* Header index panel */}
       <div className="border-b border-[#1a1a1a] pb-1 dither-border-b text-center">
@@ -65,18 +65,18 @@ export function HistoryView({ history, onSelect, onClearIndex, onBack }: History
       </div>
 
       {history.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center p-3 text-center font-mono text-[9px]">
+        <div className="flex-1 flex flex-col items-center justify-center p-3 text-center font-mono text-[9px] sm:text-[10px]">
           <p className="italic text-gray-500">REGISTRY IS EMPTY.</p>
-          <p className="mt-2 text-[7.5px] text-gray-400">SUMMON YOUR FIRST TARGET TO POPULATE THE ARCHIVES!</p>
+          <p className="mt-2 text-[7.5px] sm:text-[8.5px] text-gray-400">SUMMON YOUR FIRST TARGET TO POPULATE THE ARCHIVES!</p>
           <button
             onClick={onBack}
-            className="retro-btn-ingame py-1.5 px-3 mt-4 text-[9px] font-bold cursor-pointer"
+            className="retro-btn-ingame py-1.5 px-3 mt-4 text-[9px] sm:text-[10px] font-bold cursor-pointer"
           >
             A-BACK
           </button>
         </div>
       ) : (
-        <div className="flex-1 flex my-2 space-x-1.5 h-[160px] overflow-hidden">
+        <div className="flex-1 flex my-2 space-x-1.5 overflow-hidden">
           
           {/* Scrollable list of profiles on the Left */}
           <div className="flex-1 border-2 border-[#1a1a1a] bg-white h-full overflow-y-auto">
@@ -86,7 +86,7 @@ export function HistoryView({ history, onSelect, onClearIndex, onBack }: History
                 <div
                   key={idx}
                   onClick={() => handleSelectIndex(idx)}
-                  className={`flex justify-between items-center px-1.5 py-1.5 border-b border-gray-100 last:border-0 font-mono text-[8.5px] cursor-pointer ${
+                  className={`flex justify-between items-center px-1.5 py-1.5 border-b border-gray-100 last:border-0 font-mono text-[8.5px] sm:text-[9.5px] cursor-pointer ${
                     active ? 'bg-[#7f001c] text-white font-bold' : 'hover:bg-gray-100 text-[#1a1a1a]'
                   }`}
                 >
@@ -94,7 +94,7 @@ export function HistoryView({ history, onSelect, onClearIndex, onBack }: History
                     {idx + 1}. {mon.username}
                   </span>
                   <div className="flex items-center space-x-1.5">
-                    <span className="text-[7px]" style={{ fontSize: '7px' }}>LV{mon.level}</span>
+                    <span className="text-[7px] sm:text-[8px]" style={{ fontSize: '7px' }}>LV{mon.level}</span>
                     <button
                       onClick={(e) => handleDeleteIndex(idx, e)}
                       className={`h-4 w-4 text-[8px] flex items-center justify-center border hover:bg-gray-200 hover:text-red-500 rounded-sm leading-none font-bold ${
@@ -112,7 +112,7 @@ export function HistoryView({ history, onSelect, onClearIndex, onBack }: History
 
           {/* Dynamic Pokedex Preview card on the Right */}
           {activeMon && (
-            <div className="w-[100px] border-2 border-[#1a1a1a] bg-[#e2dfde] p-1 flex flex-col items-center justify-between font-mono text-[8px] leading-tight select-none">
+            <div className="w-[clamp(80px,18vw,130px)] border-2 border-[#1a1a1a] bg-[#e2dfde] p-1 flex flex-col items-center justify-between font-mono text-[8px] sm:text-[9px] leading-tight select-none">
               <div className="text-center font-bold text-center w-full truncate border-b border-gray-400 pb-0.5" style={{ fontSize: '7.5px' }}>
                 {activeMon.name.toUpperCase()}
               </div>
@@ -142,7 +142,7 @@ export function HistoryView({ history, onSelect, onClearIndex, onBack }: History
 
               <button
                 onClick={handleConfirmSelect}
-                className="w-full text-center py-1 mt-1 font-bold text-[7.5px] bg-[#1a1a1a] text-white rounded-sm hover:invert cursor-pointer"
+                className="w-full text-center py-1 mt-1 font-bold text-[7.5px] sm:text-[8.5px] bg-[#1a1a1a] text-white rounded-sm hover:invert cursor-pointer"
               >
                 A-INSPECT
               </button>
@@ -153,7 +153,7 @@ export function HistoryView({ history, onSelect, onClearIndex, onBack }: History
 
       {/* Navigation shortcuts footer */}
       {history.length > 0 && (
-        <div className="border-t border-dashed border-[#1a1a1a] pt-1 flex justify-between font-mono text-[8px]">
+        <div className="border-t border-dashed border-[#1a1a1a] pt-1 flex justify-between font-mono text-[8px] sm:text-[9px]">
           <button
             onClick={() => {
               playRetroSound('beep');

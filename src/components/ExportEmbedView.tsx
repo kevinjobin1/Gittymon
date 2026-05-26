@@ -263,11 +263,11 @@ export function ExportEmbedView({
   };
 
   return (
-    <div className="flex-1 flex flex-col justify-between p-1 px-1.5 text-[#1a1a1a] select-none font-mono min-h-full">
+    <div className="flex-1 flex flex-col justify-between p-1 px-1.5 md:px-2.5 md:py-1.5 text-[#1a1a1a] select-none font-mono min-h-full">
       {/* Title */}
-      <div className="flex justify-between items-center border-b-2 border-[#1a1a1a] pb-1.5 font-bold text-[9px] tracking-tight shrink-0">
+      <div className="flex justify-between items-center border-b-2 border-[#1a1a1a] pb-1.5 font-bold text-[9px] sm:text-[10px] tracking-tight shrink-0">
         <span className="text-[#7f001c]">▲ CARD EXPORTER ENGINE</span>
-        <button onClick={onBack} className="hover:underline text-[7.5px] uppercase font-bold text-gray-500">
+        <button onClick={onBack} className="hover:underline text-[7.5px] sm:text-[8.5px] uppercase font-bold text-gray-500">
           ◀ BACK (B)
         </button>
       </div>
@@ -301,14 +301,14 @@ export function ExportEmbedView({
             ref={previewCanvasRef}
             width={460}
             height={220}
-            className="w-full h-auto max-h-[130px] object-contain"
+            className="w-full h-auto max-h-[clamp(80px,20vh,160px)] object-contain"
             style={{ imageRendering: 'pixelated' }}
           />
         </div>
       </div>
 
       {/* Export Options */}
-      <div className="flex-1 flex flex-col justify-start space-y-1 overflow-y-auto max-h-[140px] pt-0.5 scrollbar-thin">
+      <div className="flex-1 flex flex-col justify-start space-y-1 overflow-y-auto pt-0.5 scrollbar-thin">
         {EXPORTS.map((item, idx) => {
           const isSelected = cursor === idx;
           const isCopied = copiedIndex === idx;
@@ -382,7 +382,7 @@ export function ExportEmbedView({
       </div>
 
       {/* Footer */}
-      <div className="h-[25px] border-2 border-[#1a1a1a] bg-[#e1dfde] rounded p-1 text-[7px] leading-tight flex items-center justify-between text-gray-700 shrink-0">
+      <div className="min-h-[clamp(22px,4vh,30px)] border-2 border-[#1a1a1a] bg-[#e1dfde] rounded p-1 text-[7px] sm:text-[8px] leading-tight flex items-center justify-between text-gray-700 shrink-0">
         <span className="truncate pr-1">
           PRESS UP/DOWN TO NAVIGATE • PRESS A TO SAVE/COPY • PRESS B TO EXIT
         </span>

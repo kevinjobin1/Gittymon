@@ -79,7 +79,7 @@ export function MonDetailsView({ mon, onBattle, onBack }: MonDetailsViewProps) {
   };
 
   return (
-    <div className="flex-1 flex flex-col justify-between py-1 px-1 text-[#1a1a1a] select-none">
+    <div className="flex-1 flex flex-col justify-between py-1 px-1 md:py-1.5 md:px-2 text-[#1a1a1a] select-none">
       {/* Top Header details */}
       <div className="flex justify-between items-center border-b border-[#1a1a1a] pb-1 dither-border-b font-mono text-[9px] font-bold">
         <span className="truncate">{mon.name.toUpperCase()}</span>
@@ -106,7 +106,7 @@ export function MonDetailsView({ mon, onBattle, onBack }: MonDetailsViewProps) {
             ref={canvasRef}
             width={72}
             height={72}
-            className="w-[72px] h-[72px] border-2 border-[#1a1a1a] bg-white rounded-sm pixelated shadow-[2px_2px_0px_#1a1a1a]"
+            className="w-[clamp(56px,12vw,96px)] h-[clamp(56px,12vw,96px)] border-2 border-[#1a1a1a] bg-white rounded-sm pixelated shadow-[2px_2px_0px_#1a1a1a]"
           />
           {/* Palette badge — click to cycle */}
           <button
@@ -170,7 +170,7 @@ export function MonDetailsView({ mon, onBattle, onBack }: MonDetailsViewProps) {
       </div>
 
       {/* Tab Panels */}
-      <div className="flex-1 my-1.5 min-h-[120px] sm:min-h-[145px] max-h-[120px] sm:max-h-[145px] border-2 border-[#1a1a1a] bg-white p-1.5 overflow-y-auto leading-tight">
+      <div className="flex-1 my-1.5 md:my-2 border-2 border-[#1a1a1a] bg-white p-1.5 md:p-2 overflow-y-auto leading-tight">
         {activeTab === 'ROAST' && (
           <div className="space-y-1 font-mono text-[9px] text-[#1a1a1a]">
             <p className="italic">" {mon.roast} "</p>

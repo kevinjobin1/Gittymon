@@ -118,14 +118,14 @@ function CardDetailPanel({
         </RetroButton>
       </div>
 
-      <div className="p-1.5 grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-[7px]">
+      <div className="p-1.5 grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-[7px] md:text-[8px]">
         {/* Animated sprite (left) */}
         <div className="row-span-3 flex flex-col items-center justify-center bg-neutral-50 border border-neutral-200 rounded p-1">
           <canvas
             ref={detailCanvasRef}
             width={96}
             height={96}
-            className="w-[72px] h-[72px] pixelated"
+            className="w-[clamp(56px,12vw,96px)] h-[clamp(56px,12vw,96px)] pixelated"
             style={{ imageRendering: 'pixelated' }}
           />
           <div
@@ -756,7 +756,7 @@ export function CollectionView({
   }, [identity, bulkSelectedIds]);
 
   return (
-    <div className="flex-1 flex flex-col justify-between p-1 px-1.5 text-[#1a1a1a] select-none font-mono">
+    <div className="flex-1 flex flex-col justify-between p-1 px-1.5 md:px-2.5 md:py-1.5 text-[#1a1a1a] select-none font-mono">
       {/* ── Header ── */}
       <div className="flex justify-between items-center border-b-2 border-[#1a1a1a] pb-1.5 font-bold text-[9px] tracking-tight shrink-0">
         <span className="text-[#7f001c]">▼ CARD COLLECTION</span>
@@ -1235,7 +1235,7 @@ export function CollectionView({
       )}
 
       {/* ── Footer ── */}
-      <div className="border-t border-dashed border-[#1a1a1a] pt-1 flex justify-between font-mono text-[8px] mt-1 shrink-0">
+      <div className="border-t border-dashed border-[#1a1a1a] pt-1 flex justify-between font-mono text-[8px] sm:text-[9px] mt-1 shrink-0">
         <button
           onClick={() => {
             playRetroSound('beep');

@@ -118,9 +118,8 @@ export const SHELL_HTML = `<!doctype html>
       ]
     }
     </script>
-
-    <script type="module" crossorigin src="/assets/index-nIhug_5G.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-DkLXhIze.css">
+    <script type="module" crossorigin src="/assets/index-CkPIYJEx.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-B9vd-_0p.css">
   </head>
   <body>
     <div id="root"></div>
